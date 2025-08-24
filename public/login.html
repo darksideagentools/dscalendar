@@ -9,10 +9,18 @@
     <h1>Telegram Login Test Page</h1>
     <p>If the button below appears, the issue is with the Preact framework integration. If it is still blank, the issue is with your browser/network.</p>
 
+    <script>
+        function onTelegramAuth(user) {
+            // Send the user data to the parent window (the main Preact app)
+            // The targetOrigin MUST match the domain of the parent window for security.
+            window.parent.postMessage({ type: 'telegram-auth', user: user }, 'https://ds-days-off.netlify.app');
+        }
+    </script>
+
     <script async src="https://telegram.org/js/telegram-widget.js?22" 
         data-telegram-login="dscalendar_bot" 
         data-size="large" 
-        data-onauth="alert('Login successful! User: ' + user.first_name)" 
+        data-onauth="onTelegramAuth(user)" 
         data-request-access="write">
     </script>
 

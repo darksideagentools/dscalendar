@@ -62,7 +62,7 @@ export function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const handleTelegramAuth = async ({ detail: telegramUser }) => {
+  const handleTelegramAuth = async (telegramUser) => {
     setLoading(true);
     try {
       const response = await fetch('/.netlify/functions/auth-telegram', {
@@ -83,7 +83,19 @@ export function App() {
   };
 
   useEffect(() => {
-    window.addEventListener('telegram-auth', handleTelegramAuth);
+    const handleIframeMessage = (event) => {
+      // Security: Check the origin of the message
+      if (event.origin !== 'https://ds-days-off.netlify.app') {
+        return;
+      }
+      // Check if the message is the one we expect
+      if (event.data && event.data.type === 'telegram-auth') {
+        handleTelegramAuth(event.data.user);
+      }
+    };
+
+    window.addEventListener('message', handleIframeMessage);
+
     const checkSession = async () => {
       try {
         const response = await fetch('/.netlify/functions/user-info');
@@ -98,20 +110,9 @@ export function App() {
       }
     };
     checkSession();
-    return () => window.removeEventListener('telegram-auth', handleTelegramAuth);
-  }, []);
 
-  useEffect(() => {
-    if (user === null && !loading) {
-      if (!document.getElementById('telegram-widget-script')) {
-        const script = document.createElement('script');
-        script.id = 'telegram-widget-script';
-        script.src = 'https://telegram.org/js/telegram-widget.js?22';
-        script.async = true;
-        document.body.appendChild(script);
-      }
-    }
-  }, [user, loading]);
+    return () => window.removeEventListener('message', handleIframeMessage);
+  }, []);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -119,12 +120,10 @@ export function App() {
 
   if (!user) {
     return (
-      <div
-        data-telegram-login="dscalendar_bot"
-        data-size="large"
-        data-onauth="onTelegramAuth(user)"
-        data-request-access="write"
-      ></div>
+      <iframe 
+        src="/login.html"
+        style={{ border: 'none', width: '240px', height: '50px' }}
+      ></iframe>
     );
   }
 
