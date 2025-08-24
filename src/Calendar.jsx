@@ -106,10 +106,14 @@ export function Calendar() {
         };
 
         const handleWheelScroll = (e) => {
-            // Prevent the default vertical scroll
             e.preventDefault();
-            // Add the vertical scroll amount to the horizontal scroll position
-            scroller.scrollLeft += e.deltaY;
+            if (e.deltaY < 0) {
+                // Scroll up -> go to previous month
+                scroller.scrollBy({ left: -scroller.offsetWidth, behavior: 'smooth' });
+            } else {
+                // Scroll down -> go to next month
+                scroller.scrollBy({ left: scroller.offsetWidth, behavior: 'smooth' });
+            }
         };
 
         scroller.addEventListener('scroll', onScroll);

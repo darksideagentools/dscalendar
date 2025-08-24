@@ -74,7 +74,11 @@ function AdminCalendar({ onDayClick, refreshKey }) {
 
         const handleWheelScroll = (e) => {
             e.preventDefault();
-            scroller.scrollLeft += e.deltaY;
+            if (e.deltaY < 0) {
+                scroller.scrollBy({ left: -scroller.offsetWidth, behavior: 'smooth' });
+            } else {
+                scroller.scrollBy({ left: scroller.offsetWidth, behavior: 'smooth' });
+            }
         };
 
         scroller.addEventListener('scroll', onScroll);
