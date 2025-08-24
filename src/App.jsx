@@ -18,19 +18,17 @@ export function App() {
   const handleTelegramAuth = async (telegramUser) => {
     setLoading(true);
     try {
-      // First, log out to clear any stale session cookie
-      await fetch('/.netlify/functions/api?action=logout', { method: 'POST' });
-
-      // Then, perform the new login
+      // We don't need to logout first if we are forcing a re-check after.
       const response = await fetch('/.netlify/functions/api?action=auth-telegram', {
         method: 'POST',
         body: JSON.stringify(telegramUser)
       });
-      const data = await response.json();
       if (response.ok) {
-        // We don't call setUser here. We reload the page to force a clean state.
-        window.location.reload();
+        // Instead of setting user or reloading, we re-run the session check
+        // to get the definitive user state from the new cookie.
+        await checkSession(); 
       } else {
+        const data = await response.json();
         throw new Error(data.message || 'Auth failed');
       }
     } catch (error) {
@@ -40,34 +38,30 @@ export function App() {
     }
   };
 
+  const checkSession = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/api?action=user-info');
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.user);
+      }
+    } catch (error) {
+      // This is expected if there's no session
+      setUser(null);
+    }
+  };
+
   useEffect(() => {
     const handleIframeMessage = (event) => {
-      // Security: Check the origin of the message
-      if (event.origin !== 'https://ds-days-off.netlify.app') {
-        return;
-      }
-      // Check if the message is the one we expect
+      if (event.origin !== 'https://ds-days-off.netlify.app') return;
       if (event.data && event.data.type === 'telegram-auth') {
         handleTelegramAuth(event.data.user);
       }
     };
-
     window.addEventListener('message', handleIframeMessage);
 
-    const checkSession = async () => {
-      try {
-        const response = await fetch('/.netlify/functions/api?action=user-info');
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
-        }
-      } catch (error) {
-        // This is expected if there's no session
-      } finally {
-        setLoading(false);
-      }
-    };
-    checkSession();
+    setLoading(true);
+    checkSession().finally(() => setLoading(false));
 
     return () => window.removeEventListener('message', handleIframeMessage);
   }, []);
