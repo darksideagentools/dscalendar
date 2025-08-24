@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "cookie": "^0.6.0",
+    "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.5",
     "preact": "^10.19.6"
   },
