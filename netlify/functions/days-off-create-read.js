@@ -4,19 +4,6 @@ const cookie = require('cookie');
 
 const { DATABASE_URL, JWT_SECRET } = process.env;
 
-// A shared utility to verify the user's token and return their data
-function verifyUser(event) {
-  const cookies = event.headers.cookie ? cookie.parse(event.headers.cookie) : {};
-  const sessionToken = cookies.session;
-  if (!sessionToken) return null;
-
-  try {
-    return jwt.verify(sessionToken, JWT_SECRET);
-  } catch (err) {
-    return null;
-  }
-}
-
 async function handleGet(event, client, userData) {
     const { month, year } = event.queryStringParameters;
     if (!month || !year) {
@@ -106,7 +93,16 @@ async function handlePost(event, client, userData) {
 }
 
 exports.handler = async function(event, context) {
-  const userData = verifyUser(event);
+  let userData;
+  try {
+    const cookies = event.headers.cookie ? cookie.parse(event.headers.cookie) : {};
+    const sessionToken = cookies.session;
+    if (!sessionToken) throw new Error('No session token');
+    userData = jwt.verify(sessionToken, JWT_SECRET);
+  } catch (err) {
+    return { statusCode: 401, body: JSON.stringify({ message: 'Unauthorized' }) };
+  }
+
   if (!userData || userData.shift === 'pending') {
     return { statusCode: 403, body: JSON.stringify({ message: 'Forbidden.' }) };
   }
