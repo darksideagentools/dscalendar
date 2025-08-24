@@ -24,97 +24,90 @@ function AdminMonth({ date, calendarState, onDayClick }) {
         }
         days.push(<div className={dayClass} onClick={() => onDayClick(dateStr)}>{i}</div>);
     }
+    while (days.length < 42) { days.push(<div class="day empty"></div>); }
 
-    // Add trailing empty days to fill out 6 weeks (42 cells)
-    while (days.length < 42) {
-        days.push(<div class="day empty"></div>);
-    }
-    return days;
+    return (
+        <div className="month-view">
+            <div class="calendar-header">
+                <h2>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</h2>
+            </div>
+            <div class="calendar-grid">
+                <div class="day-label">S</div><div class="day-label">M</div><div class="day-label">T</div><div class="day-label">W</div><div class="day-label">T</div><div class="day-label">F</div><div class="day-label">S</div>
+                {days}
+            </div>
+        </div>
+    );
 }
 
-// Component for the Admin's Calendar View
+// Component for the Admin's Calendar View using infinite scroll
 function AdminCalendar({ onDayClick, refreshKey }) {
-    const [currentDate, setCurrentDate] = useState(new Date());
+    const [months, setMonths] = useState(() => {
+        const today = new Date();
+        return [
+            new Date(today.getFullYear(), today.getMonth() - 1, 1),
+            today,
+            new Date(today.getFullYear(), today.getMonth() + 1, 1),
+        ];
+    });
     const [calendarData, setCalendarData] = useState({});
     const scrollRef = useRef(null);
 
-    const dates = [
-        new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
-        currentDate,
-        new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1),
-    ];
+    const fetchAdminCalendar = async (date) => {
+        const monthKey = getMonthKey(date);
+        if (calendarData[monthKey] && refreshKey === 0) return;
+        const month = date.getMonth() + 1;
+        const year = date.getFullYear();
+        const response = await fetch(`/.netlify/functions/api?action=admin-get-calendar&month=${month}&year=${year}`);
+        const data = await response.json();
+        setCalendarData(prev => ({ ...prev, [monthKey]: data }));
+    };
 
     useEffect(() => {
-        const fetchAdminCalendar = async (date) => {
-            const monthKey = getMonthKey(date);
-            if (calendarData[monthKey] && refreshKey === 0) return; // Don't refetch unless forced
-            const month = date.getMonth() + 1;
-            const year = date.getFullYear();
-            const response = await fetch(`/.netlify/functions/api?action=admin-get-calendar&month=${month}&year=${year}`);
-            const data = await response.json();
-            setCalendarData(prev => ({ ...prev, [monthKey]: data }));
-        };
-        Promise.all(dates.map(fetchAdminCalendar));
-    }, [currentDate, refreshKey]);
+        months.forEach(fetchAdminCalendar);
+    }, [months, refreshKey]);
 
     useEffect(() => {
         const scroller = scrollRef.current;
         if (!scroller) return;
-        scroller.scrollTo({ left: scroller.offsetWidth, behavior: 'instant' });
 
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
-                        const monthKey = entry.target.dataset.monthKey;
-                        const [year, month] = monthKey.split('-').map(Number);
-                        setCurrentDate(new Date(year, month - 1, 1));
+                        if (entry.target === scroller.firstElementChild) {
+                            const firstMonth = months[0];
+                            setMonths(prev => [new Date(firstMonth.getFullYear(), firstMonth.getMonth() - 1, 1), ...prev]);
+                        } else if (entry.target === scroller.lastElementChild) {
+                            const lastMonth = months[months.length - 1];
+                            setMonths(prev => [...prev, new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 1)]);
+                        }
                     }
                 });
             },
-            { root: scroller, threshold: 0.51 }
+            { root: scroller, threshold: 0.1 }
         );
 
-        const firstMonth = scroller.children[0];
-        const lastMonth = scroller.children[2];
-        if (firstMonth) observer.observe(firstMonth);
-        if (lastMonth) observer.observe(lastMonth);
+        if (scroller.firstElementChild) observer.observe(scroller.firstElementChild);
+        if (scroller.lastElementChild) observer.observe(scroller.lastElementChild);
 
-        const handleWheelScroll = (e) => {
-            e.preventDefault();
-            if (e.deltaY < 0) {
-                scroller.scrollBy({ left: -scroller.offsetWidth, behavior: 'smooth' });
-            } else {
-                scroller.scrollBy({ left: scroller.offsetWidth, behavior: 'smooth' });
-            }
-        };
-
-        scroller.addEventListener('wheel', handleWheelScroll, { passive: false });
-
-        return () => {
-            if (firstMonth) observer.unobserve(firstMonth);
-            if (lastMonth) observer.unobserve(lastMonth);
-            scroller.removeEventListener('wheel', handleWheelScroll);
-        }
-    }, [currentDate]);
+        return () => observer.disconnect();
+    }, [months]);
 
     return (
         <div ref={scrollRef} className="calendar-scroll-container">
-            {dates.map(date => (
-                <div className="month-view" key={getMonthKey(date)} data-month-key={getMonthKey(date)}>
-                    <div class="calendar-header"><h2>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</h2></div>
-                    <div class="calendar-grid">
-                        <div class="day-label">S</div><div class="day-label">M</div><div class="day-label">T</div><div class="day-label">W</div><div class="day-label">T</div><div class="day-label">F</div><div class="day-label">S</div>
-                        <AdminMonth date={date} calendarState={calendarData[getMonthKey(date)] || {}} onDayClick={onDayClick} />
-                    </div>
-                </div>
+            {months.map(date => (
+                <AdminMonth 
+                    key={getMonthKey(date)} 
+                    date={date} 
+                    calendarState={calendarData[getMonthKey(date)] || {}} 
+                    onDayClick={onDayClick} 
+                />
             ))}
         </div>
     );
 }
 
 // ... (DayDetails and other components remain the same)
-
 function DayDetails({ selectedDate, onUpdateRequest }) {
     const [details, setDetails] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -176,7 +169,10 @@ export function AdminDashboard() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleRequestUpdate = () => setRefreshKey(k => k + 1);
+  const handleRequestUpdate = () => {
+    setSelectedDate(null); // Clear details view
+    setRefreshKey(k => k + 1); // Force calendar to refetch
+  };
 
   const fetchPendingUsers = async () => {
     try {

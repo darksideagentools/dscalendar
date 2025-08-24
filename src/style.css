@@ -41,6 +41,7 @@
     border-radius: 50%;
     cursor: pointer;
     transition: background-color 0.2s ease;
+    aspect-ratio: 1 / 1; /* This ensures the element is always a square */
 }
 
 .day:not(.empty):hover {

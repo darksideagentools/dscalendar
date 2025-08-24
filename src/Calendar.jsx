@@ -38,11 +38,7 @@ function Month({ date, calendarData, selection, onDayClick }) {
 
         days.push(<div className={dayClass} onClick={() => onDayClick(dateStr, isBooked, isRed)}>{i}</div>);
     }
-
-    // Add trailing empty days to fill out 6 weeks (42 cells)
-    while (days.length < 42) {
-        days.push(<div class="day empty"></div>);
-    }
+    while (days.length < 42) { days.push(<div class="day empty"></div>); }
 
     return (
         <div className="month-view">
@@ -58,79 +54,65 @@ function Month({ date, calendarData, selection, onDayClick }) {
 }
 
 export function Calendar() {
-    const [currentDate, setCurrentDate] = useState(new Date());
+    const [months, setMonths] = useState(() => {
+        const today = new Date();
+        return [
+            new Date(today.getFullYear(), today.getMonth() - 1, 1),
+            today,
+            new Date(today.getFullYear(), today.getMonth() + 1, 1),
+        ];
+    });
     const [calendarData, setCalendarData] = useState({});
     const [selection, setSelection] = useState([]);
     const [error, setError] = useState(null);
     const scrollRef = useRef(null);
 
-    const dates = [
-        new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
-        currentDate,
-        new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1),
-    ];
+    const fetchMonthData = async (date) => {
+        const monthKey = getMonthKey(date);
+        if (calendarData[monthKey]) return; // Don't refetch
 
-    useEffect(() => {
-        const fetchMonthData = async (date) => {
-            const monthKey = getMonthKey(date);
-            if (calendarData[monthKey]) return; // Don't refetch
-
+        try {
             const month = date.getMonth() + 1;
             const year = date.getFullYear();
             const response = await fetch(`/.netlify/functions/api?action=get-calendar&month=${month}&year=${year}`, { credentials: 'include' });
+            if (!response.ok) throw new Error('Network response was not ok');
             const data = await response.json();
-            
             setCalendarData(prevData => ({ ...prevData, [monthKey]: data }));
-        };
+        } catch (err) {
+            setError(err.message);
+        }
+    };
 
-        Promise.all(dates.map(fetchMonthData)).catch(err => setError(err.message));
-    }, [currentDate]);
+    useEffect(() => {
+        months.forEach(fetchMonthData);
+    }, [months]);
 
-    // Snap scrolling and month change logic
     useEffect(() => {
         const scroller = scrollRef.current;
         if (!scroller) return;
-
-        // Center the view on the current month initially
-        scroller.scrollTo({ left: scroller.offsetWidth, behavior: 'instant' });
 
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
-                        const monthKey = entry.target.dataset.monthKey;
-                        const [year, month] = monthKey.split('-').map(Number);
-                        // Month is 1-based in key, but 0-based in Date object
-                        setCurrentDate(new Date(year, month - 1, 1));
+                        if (entry.target === scroller.firstElementChild) {
+                            const firstMonth = months[0];
+                            setMonths(prev => [new Date(firstMonth.getFullYear(), firstMonth.getMonth() - 1, 1), ...prev]);
+                        } else if (entry.target === scroller.lastElementChild) {
+                            const lastMonth = months[months.length - 1];
+                            setMonths(prev => [...prev, new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 1)]);
+                        }
                     }
                 });
             },
-            { root: scroller, threshold: 0.51 } // 51% visibility triggers the change
+            { root: scroller, threshold: 0.1 }
         );
 
-        // Observe the first and last month elements
-        const firstMonth = scroller.children[0];
-        const lastMonth = scroller.children[2];
-        if (firstMonth) observer.observe(firstMonth);
-        if (lastMonth) observer.observe(lastMonth);
+        if (scroller.firstElementChild) observer.observe(scroller.firstElementChild);
+        if (scroller.lastElementChild) observer.observe(scroller.lastElementChild);
 
-        const handleWheelScroll = (e) => {
-            e.preventDefault();
-            if (e.deltaY < 0) {
-                scroller.scrollBy({ left: -scroller.offsetWidth, behavior: 'smooth' });
-            } else {
-                scroller.scrollBy({ left: scroller.offsetWidth, behavior: 'smooth' });
-            }
-        };
-
-        scroller.addEventListener('wheel', handleWheelScroll, { passive: false });
-
-        return () => {
-            if (firstMonth) observer.unobserve(firstMonth);
-            if (lastMonth) observer.unobserve(lastMonth);
-            scroller.removeEventListener('wheel', handleWheelScroll);
-        }
-    }, [currentDate]);
+        return () => observer.disconnect();
+    }, [months]);
 
     const handleDayClick = (dateStr, isBooked, isRed) => {
         if (isBooked || isRed) return;
@@ -150,12 +132,12 @@ export function Calendar() {
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Failed to submit request');
             setSelection([]);
-            // Refresh current month data
-            const monthKey = getMonthKey(currentDate);
-            const month = currentDate.getMonth() + 1;
-            const year = currentDate.getFullYear();
-            const newData = await fetch(`/.netlify/functions/api?action=get-calendar&month=${month}&year=${year}`, { credentials: 'include' }).then(res => res.json());
-            setCalendarData(prevData => ({ ...prevData, [monthKey]: newData }));
+            // Refresh all visible months data
+            const visibleKeys = months.map(getMonthKey);
+            const currentData = { ...calendarData };
+            visibleKeys.forEach(key => delete currentData[key]);
+            setCalendarData(currentData);
+            months.forEach(fetchMonthData);
         } catch (err) {
             setError(err.message);
         }
@@ -164,15 +146,14 @@ export function Calendar() {
     return (
         <div>
             <div ref={scrollRef} className="calendar-scroll-container">
-                {dates.map(date => (
-                    <div className="month-view" key={getMonthKey(date)} data-month-key={getMonthKey(date)}>
-                        <Month 
-                            date={date} 
-                            calendarData={calendarData[getMonthKey(date)] || {}} 
-                            selection={selection} 
-                            onDayClick={handleDayClick} 
-                        />
-                    </div>
+                {months.map(date => (
+                    <Month 
+                        key={getMonthKey(date)} 
+                        date={date} 
+                        calendarData={calendarData[getMonthKey(date)] || {}} 
+                        selection={selection} 
+                        onDayClick={handleDayClick} 
+                    />
                 ))}
             </div>
             {error && <div class="error-message">{error}</div>}
