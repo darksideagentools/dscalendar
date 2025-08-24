@@ -1,10 +1,7 @@
 import { h } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 
-import { h } from 'preact';
-import { useState, useEffect } from 'preact/hooks';
-
-function AdminCalendar({ onDayClick }) {
+function AdminCalendar({ onDayClick, refreshKey }) {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [calendarState, setCalendarState] = useState({});
 
@@ -17,7 +14,7 @@ function AdminCalendar({ onDayClick }) {
             setCalendarState(data);
         };
         fetchAdminCalendar();
-    }, [currentDate]);
+    }, [currentDate, refreshKey]);
 
     const changeMonth = (offset) => {
         setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + offset)));
@@ -61,7 +58,10 @@ function DayDetails({ selectedDate, onUpdateRequest }) {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if (!selectedDate) return;
+        if (!selectedDate) {
+            setDetails([]); // Clear details when no date is selected
+            return;
+        }
         const fetchDetails = async () => {
             setLoading(true);
             const response = await fetch(`/.netlify/functions/api?action=admin-get-day-details&date=${selectedDate}`);
@@ -70,7 +70,7 @@ function DayDetails({ selectedDate, onUpdateRequest }) {
             setLoading(false);
         };
         fetchDetails();
-    }, [selectedDate]);
+    }, [selectedDate, onUpdateRequest]); // Rerun when date changes or a request is updated
 
     const handleManageRequest = async (dayOffId, action) => {
         await fetch('/.netlify/functions/api?action=admin-manage-request', {
@@ -90,7 +90,7 @@ function DayDetails({ selectedDate, onUpdateRequest }) {
                 <ul>
                     {details.map(req => (
                         <li key={req.id}>
-                            <span>{req.first_name} ({req.shift}) - <span class={req.status}>{req.status}</span></span>
+                            <span>{req.first_name} ({req.shift}) - <span className={`status ${req.status}`}>{req.status}</span></span>
                             {req.status === 'pending' && (
                                 <div class="approval-buttons">
                                     <button onClick={() => handleManageRequest(req.id, 'approve')}>Approve</button>
@@ -107,14 +107,18 @@ function DayDetails({ selectedDate, onUpdateRequest }) {
 
 export function AdminDashboard() {
   const [selectedDate, setSelectedDate] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0); // Used to force calendar refresh
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleRequestUpdate = () => {
+    // This will trigger a refresh in both DayDetails and AdminCalendar
+    setRefreshKey(k => k + 1);
+  };
 
   return (
     <div className="admin-dashboard">
       <h2>Admin Dashboard</h2>
       <AdminCalendar key={refreshKey} onDayClick={setSelectedDate} />
-      <DayDetails selectedDate={selectedDate} onUpdateRequest={() => setRefreshKey(k => k + 1)} />
+      <DayDetails selectedDate={selectedDate} onUpdateRequest={handleRequestUpdate} />
     </div>
   );
-}
 }

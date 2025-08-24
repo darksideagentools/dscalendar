@@ -1,1 +1,114 @@
-Aug 24, 06:49:41 AM: ERROR  Uncaught Exception 	{"errorType":"Runtime.UserCodeSyntaxError","errorMessage":"SyntaxError: Identifier 'adminIds' has already been declared","stack":["Runtime.UserCodeSyntaxError: SyntaxError: Identifier 'adminIds' has already been declared","    at _loadUserApp (file:///var/runtime/index.mjs:1106:17)","    at async UserFunction.js.module.exports.load (file:///var/runtime/index.mjs:1148:21)","    at async start (file:///var/runtime/index.mjs:1335:23)","    at async file:///var/runtime/index.mjs:1342:1"]}Aug 24, 06:49:41 AM: INIT_REPORT Init Duration: 173.10 ms	Phase: init	Status: error	Error Type: Runtime.UserCodeSyntaxErrorAug 24, 06:49:41 AM: ERROR  Uncaught Exception 	{"errorType":"Runtime.UserCodeSyntaxError","errorMessage":"SyntaxError: Identifier 'adminIds' has already been declared","stack":["Runtime.UserCodeSyntaxError: SyntaxError: Identifier 'adminIds' has already been declared","    at _loadUserApp (file:///var/runtime/index.mjs:1106:17)","    at async UserFunction.js.module.exports.load (file:///var/runtime/index.mjs:1148:21)","    at async start (file:///var/runtime/index.mjs:1335:23)","    at async file:///var/runtime/index.mjs:1342:1"]}Aug 24, 06:49:41 AM: INIT_REPORT Init Duration: 122.72 ms	Phase: invoke	Status: error	Error Type: Runtime.UserCodeSyntaxErrorAug 24, 06:49:41 AM: fa363dc0 Duration: 190.51 ms	Memory Usage: 83 MBAug 24, 06:49:46 AM: ERROR  Uncaught Exception 	{"errorType":"Runtime.UserCodeSyntaxError","errorMessage":"SyntaxError: Identifier 'adminIds' has already been declared","stack":["Runtime.UserCodeSyntaxError: SyntaxError: Identifier 'adminIds' has already been declared","    at _loadUserApp (file:///var/runtime/index.mjs:1106:17)","    at async UserFunction.js.module.exports.load (file:///var/runtime/index.mjs:1148:21)","    at async start (file:///var/runtime/index.mjs:1335:23)","    at async file:///var/runtime/index.mjs:1342:1"]}Aug 24, 06:49:46 AM: INIT_REPORT Init Duration: 115.20 ms	Phase: invoke	Status: error	Error Type: Runtime.UserCodeSyntaxErrorAug 24, 06:49:46 AM: 9118aa1d Duration: 169.31 ms	Memory Usage: 86 MB
+10:56:28 AM: Netlify Build                                                 
+10:56:28 AM: ────────────────────────────────────────────────────────────────
+10:56:28 AM: ​
+10:56:28 AM: ❯ Version
+10:56:28 AM:   @netlify/build 35.1.2
+10:56:28 AM: ​
+10:56:28 AM: ❯ Flags
+10:56:28 AM:   accountId: 68aa4f709403bd64282b679d
+10:56:28 AM:   baseRelDir: true
+10:56:28 AM:   buildId: 68aac59c474322000740c26a
+10:56:28 AM:   deployId: 68aac59c474322000740c26c
+10:56:28 AM: ​
+10:56:28 AM: ❯ Current directory
+10:56:28 AM:   /opt/build/repo
+10:56:28 AM: ​
+10:56:28 AM: ❯ Config file
+10:56:28 AM:   /opt/build/repo/netlify.toml
+10:56:28 AM: ​
+10:56:28 AM: ❯ Context
+10:56:28 AM:   production
+10:56:28 AM: ​
+10:56:28 AM: build.command from netlify.toml                               
+10:56:28 AM: ────────────────────────────────────────────────────────────────
+10:56:28 AM: ​
+10:56:28 AM: $ pnpm run build
+10:56:28 AM: > day-off-calendar@0.0.0 build /opt/build/repo
+10:56:28 AM: > vite build
+10:56:28 AM: vite v5.4.19 building for production...
+10:56:28 AM: transforming...
+10:56:28 AM: ✓ 9 modules transformed.
+10:56:28 AM: x Build failed in 161ms
+10:56:28 AM: error during build:
+10:56:28 AM: [vite:esbuild] Transform failed with 4 errors:
+10:56:28 AM: /opt/build/repo/src/AdminDashboard.jsx:4:9: ERROR: The symbol "h" has already been declared
+10:56:28 AM: /opt/build/repo/src/AdminDashboard.jsx:5:9: ERROR: The symbol "useState" has already been declared
+10:56:28 AM: /opt/build/repo/src/AdminDashboard.jsx:5:19: ERROR: The symbol "useEffect" has already been declared
+10:56:28 AM: /opt/build/repo/src/AdminDashboard.jsx:120:0: ERROR: Unexpected "}"
+10:56:28 AM: file: /opt/build/repo/src/AdminDashboard.jsx:4:9
+10:56:28 AM: 
+10:56:28 AM: The symbol "h" has already been declared
+10:56:28 AM: 2  |  import { useState, useEffect } from 'preact/hooks';
+10:56:28 AM: 3  |
+10:56:28 AM: 4  |  import { h } from 'preact';
+10:56:28 AM:    |           ^
+10:56:28 AM: 5  |  import { useState, useEffect } from 'preact/hooks';
+10:56:28 AM: 6  |
+10:56:28 AM: The symbol "useState" has already been declared
+10:56:28 AM: 3  |
+10:56:28 AM: 4  |  import { h } from 'preact';
+10:56:28 AM: 5  |  import { useState, useEffect } from 'preact/hooks';
+10:56:28 AM:    |           ^
+10:56:28 AM: 6  |
+10:56:28 AM: 7  |  function AdminCalendar({ onDayClick }) {
+10:56:28 AM: The symbol "useEffect" has already been declared
+10:56:28 AM: 3  |
+10:56:28 AM: 4  |  import { h } from 'preact';
+10:56:28 AM: 5  |  import { useState, useEffect } from 'preact/hooks';
+10:56:28 AM:    |                     ^
+10:56:28 AM: 6  |
+10:56:28 AM: 7  |  function AdminCalendar({ onDayClick }) {
+10:56:28 AM: Unexpected "}"
+10:56:28 AM: 118|    );
+10:56:28 AM: 119|  }
+10:56:28 AM: 120|  }
+10:56:28 AM:    |  ^
+10:56:28 AM: 121|
+10:56:28 AM: 
+10:56:28 AM:     at failureErrorWithLog (/opt/build/repo/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:1472:15)
+10:56:28 AM:     at /opt/build/repo/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:755:50
+10:56:28 AM:     at responseCallbacks.<computed> (/opt/build/repo/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:622:9)
+10:56:28 AM:     at handleIncomingPacket (/opt/build/repo/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:677:12)
+10:56:28 AM:     at Socket.readFromStdout (/opt/build/repo/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:600:7)
+10:56:28 AM:     at Socket.emit (node:events:518:28)
+10:56:28 AM:     at addChunk (node:internal/streams/readable:561:12)
+10:56:28 AM:     at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+10:56:28 AM:     at Readable.push (node:internal/streams/readable:392:5)
+10:56:28 AM:     at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)
+10:56:28 AM:  ELIFECYCLE  Command failed with exit code 1. (https://ntl.fyi/exit-code-1)
+10:56:28 AM: ​
+10:56:28 AM: "build.command" failed                                        
+10:56:28 AM: ────────────────────────────────────────────────────────────────
+10:56:28 AM: ​
+10:56:28 AM:   Error message
+10:56:28 AM:   Command failed with exit code 1: pnpm run build (https://ntl.fyi/exit-code-1)
+10:56:28 AM: ​
+10:56:28 AM:   Error location
+10:56:28 AM:   In build.command from netlify.toml:
+10:56:28 AM:   pnpm run build
+10:56:28 AM: ​
+10:56:28 AM:   Resolved config
+10:56:28 AM:   build:
+10:56:28 AM:     command: pnpm run build
+10:56:28 AM:     commandOrigin: config
+10:56:28 AM:     environment:
+10:56:28 AM:       - ADMIN_TELEGRAM_ID
+10:56:28 AM:       - APP_DOMAIN
+10:56:28 AM:       - DATABASE_URL
+10:56:28 AM:       - JWT_SECRET
+10:56:28 AM:       - TELEGRAM_BOT_TOKEN
+10:56:28 AM:     publish: /opt/build/repo/dist
+10:56:28 AM:     publishOrigin: config
+10:56:28 AM:   functions:
+10:56:28 AM:     "*":
+10:56:28 AM:       node_bundler: esbuild
+10:56:28 AM:   functionsDirectory: /opt/build/repo/netlify/functions
+10:56:28 AM:   redirects:
+10:56:29 AM: Failed during stage 'building site': Build script returned non-zero exit code: 2 (https://ntl.fyi/exit-code-2)
+10:56:29 AM:     - from: /api/*
+      status: 200
+      to: /.netlify/functions/api/:splat
+  redirectsOrigin: config
+10:56:29 AM: Build failed due to a user error: Build script returned non-zero exit code: 2
+10:56:29 AM: Failing build: Failed to build site
+10:56:29 AM: Finished processing build request in 16.167s
