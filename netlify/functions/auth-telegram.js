@@ -42,9 +42,6 @@ exports.handler = async function(event, context) {
 
       const initialShift = isAdmin ? 'Morning' : 'pending'; // Admins get a default shift
       console.log(`Assigning initial shift: ${initialShift}`);
-      const adminIds = (ADMIN_TELEGRAM_ID || '').split(',').map(id => id.trim());
-      const isAdmin = adminIds.includes(String(userData.id));
-      const initialShift = isAdmin ? 'Morning' : 'pending'; // Admins get a default shift
 
       // Upsert user: Insert if new, update if exists. Also fixes admins stuck in pending.
       const upsertQuery = `
@@ -92,9 +89,9 @@ exports.handler = async function(event, context) {
       client.release();
     }
   } catch (err) {
+    console.error('[AUTH_ERROR]', err);
     return {
       statusCode: 500,
       body: JSON.stringify({ message: 'Server error during authentication.', error: err.message })
     };
   }
-};
