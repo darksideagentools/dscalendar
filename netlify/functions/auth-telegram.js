@@ -33,6 +33,15 @@ exports.handler = async function(event, context) {
     const client = await pool.connect();
 
     try {
+      console.log('--- Starting Auth Function ---');
+      const adminIds = (ADMIN_TELEGRAM_ID || '').split(',').map(id => id.trim());
+      console.log('Admin IDs from ENV:', adminIds);
+
+      const isAdmin = adminIds.includes(String(userData.id));
+      console.log(`Incoming User ID: ${userData.id}, Is Admin: ${isAdmin}`);
+
+      const initialShift = isAdmin ? 'Morning' : 'pending'; // Admins get a default shift
+      console.log(`Assigning initial shift: ${initialShift}`);
       const adminIds = (ADMIN_TELEGRAM_ID || '').split(',').map(id => id.trim());
       const isAdmin = adminIds.includes(String(userData.id));
       const initialShift = isAdmin ? 'Morning' : 'pending'; // Admins get a default shift
