@@ -45,6 +45,44 @@
     cursor: not-allowed;
 }
 
+.day.pending {
+    background-color: #6c757d;
+    color: white;
+    opacity: 0.8;
+}
+
+.day.requesting {
+    box-shadow: 0 0 0 3px #0d6efd inset;
+    background-color: #e6e6e6;
+}
+
+.error-message {
+    color: #dc3545;
+    padding: 0.5rem 0;
+    text-align: center;
+}
+
+.calendar-actions {
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.calendar-actions button {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    border-radius: 6px;
+    border: 1px solid #0d6efd;
+    background-color: #0d6efd;
+    color: white;
+    cursor: pointer;
+}
+
+.calendar-actions button:disabled {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    cursor: not-allowed;
+}
+
 .login-container {
     display: flex;
     flex-direction: column;
