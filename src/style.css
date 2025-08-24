@@ -57,3 +57,39 @@
     background-color: #f8f9fa;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
+
+.admin-dashboard {
+    padding: 1rem;
+}
+
+.admin-dashboard h2, .admin-dashboard h3 {
+    margin-top: 0;
+}
+
+.admin-dashboard ul {
+    list-style: none;
+    padding: 0;
+}
+
+.admin-dashboard li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: 6px;
+    background-color: #f8f9fa;
+    margin-bottom: 0.5rem;
+}
+
+.approval-buttons button {
+    margin-left: 0.5rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #fff;
+}
+
+.approval-buttons button:hover {
+    background-color: #e9ecef;
+}

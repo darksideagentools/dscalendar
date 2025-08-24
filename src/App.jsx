@@ -58,6 +58,8 @@ function Calendar() {
   );
 }
 
+import { AdminDashboard } from './AdminDashboard';
+
 export function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -127,6 +129,10 @@ export function App() {
         ></iframe>
       </div>
     );
+  }
+
+  if (user.isAdmin) {
+    return <AdminDashboard />;
   }
 
   if (user.shift === 'pending') {
