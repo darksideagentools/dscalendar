@@ -23,6 +23,8 @@ export function App() {
         body: JSON.stringify(telegramUser)
       });
       const data = await response.json();
+      alert('Received user data: ' + JSON.stringify(data)); // Temporary diagnostic alert
+      console.log('Received user data:', data); // Temporary diagnostic log
       if (response.ok) {
         setUser(data); // Use the fresh user data directly from the auth response
       } else {
