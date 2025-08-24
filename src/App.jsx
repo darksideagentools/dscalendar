@@ -59,30 +59,15 @@ function Calendar() {
 }
 
 function LoginButton() {
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = "https://telegram.org/js/telegram-widget.js?22";
-    script.async = true;
-
-    script.setAttribute('data-telegram-login', 'dscalendar_bot');
-    script.setAttribute('data-size', 'large');
-    script.setAttribute('data-onauth', 'onTelegramAuth(user)');
-    script.setAttribute('data-request-access', 'write');
-
-    const container = document.getElementById('telegram-login-container');
-    container.appendChild(script);
-
-    return () => {
-      // Cleanup script when component unmounts
-      if (container) {
-        while (container.firstChild) {
-          container.removeChild(container.firstChild);
-        }
-      }
-    };
-  }, []);
-
-  return <div id="telegram-login-container"></div>;
+  // This component just needs to render the div for the script to find.
+  return (
+    <div
+      data-telegram-login="dscalendar_bot"
+      data-size="large"
+      data-onauth="onTelegramAuth(user)"
+      data-request-access="write"
+    ></div>
+  );
 }
 
 export function App() {
@@ -127,6 +112,15 @@ export function App() {
     };
 
     checkSession();
+
+    // Load the Telegram script once
+    if (!document.getElementById('telegram-widget-script')) {
+        const script = document.createElement('script');
+        script.id = 'telegram-widget-script';
+        script.src = "https://telegram.org/js/telegram-widget.js?22";
+        script.async = true;
+        document.body.appendChild(script);
+    }
 
     window.addEventListener('telegram-auth', handleTelegramAuth);
     return () => window.removeEventListener('telegram-auth', handleTelegramAuth);
