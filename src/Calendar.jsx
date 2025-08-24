@@ -86,44 +86,46 @@ export function Calendar() {
         const scroller = scrollRef.current;
         if (!scroller) return;
 
-        // Start on the middle month
+        // Center the view on the current month initially
         scroller.scrollTo({ left: scroller.offsetWidth, behavior: 'instant' });
 
-        const handleScroll = () => {
-            const scrollLeft = scroller.scrollLeft;
-            const childWidth = scroller.offsetWidth;
-            if (scrollLeft < childWidth / 2) {
-                setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-            } else if (scrollLeft > childWidth * 1.5) {
-                setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-            }
-        };
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const monthKey = entry.target.dataset.monthKey;
+                        const [year, month] = monthKey.split('-').map(Number);
+                        // Month is 1-based in key, but 0-based in Date object
+                        setCurrentDate(new Date(year, month - 1, 1));
+                    }
+                });
+            },
+            { root: scroller, threshold: 0.51 } // 51% visibility triggers the change
+        );
 
-        let scrollEndTimer;
-        const onScroll = () => {
-            clearTimeout(scrollEndTimer);
-            scrollEndTimer = setTimeout(handleScroll, 150);
-        };
+        // Observe the first and last month elements
+        const firstMonth = scroller.children[0];
+        const lastMonth = scroller.children[2];
+        if (firstMonth) observer.observe(firstMonth);
+        if (lastMonth) observer.observe(lastMonth);
 
         const handleWheelScroll = (e) => {
             e.preventDefault();
             if (e.deltaY < 0) {
-                // Scroll up -> go to previous month
                 scroller.scrollBy({ left: -scroller.offsetWidth, behavior: 'smooth' });
             } else {
-                // Scroll down -> go to next month
                 scroller.scrollBy({ left: scroller.offsetWidth, behavior: 'smooth' });
             }
         };
 
-        scroller.addEventListener('scroll', onScroll);
         scroller.addEventListener('wheel', handleWheelScroll, { passive: false });
 
         return () => {
-            scroller.removeEventListener('scroll', onScroll);
+            if (firstMonth) observer.unobserve(firstMonth);
+            if (lastMonth) observer.unobserve(lastMonth);
             scroller.removeEventListener('wheel', handleWheelScroll);
         }
-    }, [currentDate]); // Rerun when currentDate changes to reset scroll
+    }, [currentDate]);
 
     const handleDayClick = (dateStr, isBooked, isRed) => {
         if (isBooked || isRed) return;
@@ -158,13 +160,14 @@ export function Calendar() {
         <div>
             <div ref={scrollRef} className="calendar-scroll-container">
                 {dates.map(date => (
-                    <Month 
-                        key={getMonthKey(date)} 
-                        date={date} 
-                        calendarData={calendarData[getMonthKey(date)] || {}} 
-                        selection={selection} 
-                        onDayClick={handleDayClick} 
-                    />
+                    <div className="month-view" key={getMonthKey(date)} data-month-key={getMonthKey(date)}>
+                        <Month 
+                            date={date} 
+                            calendarData={calendarData[getMonthKey(date)] || {}} 
+                            selection={selection} 
+                            onDayClick={handleDayClick} 
+                        />
+                    </div>
                 ))}
             </div>
             {error && <div class="error-message">{error}</div>}

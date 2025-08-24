@@ -57,20 +57,23 @@ function AdminCalendar({ onDayClick, refreshKey }) {
         if (!scroller) return;
         scroller.scrollTo({ left: scroller.offsetWidth, behavior: 'instant' });
 
-        const handleScroll = () => {
-            const scrollLeft = scroller.scrollLeft;
-            const childWidth = scroller.offsetWidth;
-            if (scrollLeft < childWidth / 2) {
-                setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-            } else if (scrollLeft > childWidth * 1.5) {
-                setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-            }
-        };
-        let scrollEndTimer;
-        const onScroll = () => {
-            clearTimeout(scrollEndTimer);
-            scrollEndTimer = setTimeout(handleScroll, 150);
-        };
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const monthKey = entry.target.dataset.monthKey;
+                        const [year, month] = monthKey.split('-').map(Number);
+                        setCurrentDate(new Date(year, month - 1, 1));
+                    }
+                });
+            },
+            { root: scroller, threshold: 0.51 }
+        );
+
+        const firstMonth = scroller.children[0];
+        const lastMonth = scroller.children[2];
+        if (firstMonth) observer.observe(firstMonth);
+        if (lastMonth) observer.observe(lastMonth);
 
         const handleWheelScroll = (e) => {
             e.preventDefault();
@@ -81,11 +84,11 @@ function AdminCalendar({ onDayClick, refreshKey }) {
             }
         };
 
-        scroller.addEventListener('scroll', onScroll);
         scroller.addEventListener('wheel', handleWheelScroll, { passive: false });
 
         return () => {
-            scroller.removeEventListener('scroll', onScroll);
+            if (firstMonth) observer.unobserve(firstMonth);
+            if (lastMonth) observer.unobserve(lastMonth);
             scroller.removeEventListener('wheel', handleWheelScroll);
         }
     }, [currentDate]);
@@ -93,7 +96,7 @@ function AdminCalendar({ onDayClick, refreshKey }) {
     return (
         <div ref={scrollRef} className="calendar-scroll-container">
             {dates.map(date => (
-                <div className="month-view" key={getMonthKey(date)}>
+                <div className="month-view" key={getMonthKey(date)} data-month-key={getMonthKey(date)}>
                     <div class="calendar-header"><h2>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</h2></div>
                     <div class="calendar-grid">
                         <div class="day-label">S</div><div class="day-label">M</div><div class="day-label">T</div><div class="day-label">W</div><div class="day-label">T</div><div class="day-label">F</div><div class="day-label">S</div>
