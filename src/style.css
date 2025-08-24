@@ -195,3 +195,7 @@
 .admin-dashboard th {
     background-color: #f8f9fa;
 }
+
+.admin-section {
+    margin-bottom: 2rem;
+}
