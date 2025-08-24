@@ -34,7 +34,8 @@ export function App() {
     for (let i = 1; i <= daysInMonth; i++) {
       const dateStr = new Date(year, month, i).toISOString().split('T')[0];
       const isSelected = selectedDays.includes(dateStr);
-      days.push(<div class="day" class={isSelected ? 'selected' : ''} onClick={() => handleDayClick(i)}>{i}</div>);
+            const dayClass = `day ${isSelected ? 'selected' : ''}`;
+      days.push(<div className={dayClass} onClick={() => handleDayClick(i)}>{i}</div>);
     }
     return days;
   };
