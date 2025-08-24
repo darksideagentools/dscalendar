@@ -105,8 +105,20 @@ export function Calendar() {
             scrollEndTimer = setTimeout(handleScroll, 150);
         };
 
+        const handleWheelScroll = (e) => {
+            // Prevent the default vertical scroll
+            e.preventDefault();
+            // Add the vertical scroll amount to the horizontal scroll position
+            scroller.scrollLeft += e.deltaY;
+        };
+
         scroller.addEventListener('scroll', onScroll);
-        return () => scroller.removeEventListener('scroll', onScroll);
+        scroller.addEventListener('wheel', handleWheelScroll, { passive: false });
+
+        return () => {
+            scroller.removeEventListener('scroll', onScroll);
+            scroller.removeEventListener('wheel', handleWheelScroll);
+        }
     }, [currentDate]); // Rerun when currentDate changes to reset scroll
 
     const handleDayClick = (dateStr, isBooked, isRed) => {

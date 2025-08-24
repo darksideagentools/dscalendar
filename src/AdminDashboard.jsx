@@ -71,8 +71,19 @@ function AdminCalendar({ onDayClick, refreshKey }) {
             clearTimeout(scrollEndTimer);
             scrollEndTimer = setTimeout(handleScroll, 150);
         };
+
+        const handleWheelScroll = (e) => {
+            e.preventDefault();
+            scroller.scrollLeft += e.deltaY;
+        };
+
         scroller.addEventListener('scroll', onScroll);
-        return () => scroller.removeEventListener('scroll', onScroll);
+        scroller.addEventListener('wheel', handleWheelScroll, { passive: false });
+
+        return () => {
+            scroller.removeEventListener('scroll', onScroll);
+            scroller.removeEventListener('wheel', handleWheelScroll);
+        }
     }, [currentDate]);
 
     return (
