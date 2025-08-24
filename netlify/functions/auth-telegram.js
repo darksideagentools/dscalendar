@@ -33,10 +33,11 @@ exports.handler = async function(event, context) {
     const client = await pool.connect();
 
     try {
-      const isAdmin = String(userData.id) === ADMIN_TELEGRAM_ID;
+      const adminIds = (ADMIN_TELEGRAM_ID || '').split(',').map(id => id.trim());
+      const isAdmin = adminIds.includes(String(userData.id));
       const initialShift = isAdmin ? 'Morning' : 'pending'; // Admins get a default shift
 
-      // Upsert user: Insert if new, update if exists
+      // Upsert user: Insert if new, update if exists. Also fixes admins stuck in pending.
       const upsertQuery = `
         INSERT INTO users (id, first_name, last_name, username, is_admin, shift)
         VALUES ($1, $2, $3, $4, $5, $6)
@@ -44,7 +45,11 @@ exports.handler = async function(event, context) {
           first_name = EXCLUDED.first_name,
           last_name = EXCLUDED.last_name,
           username = EXCLUDED.username,
-          is_admin = EXCLUDED.is_admin;
+          is_admin = EXCLUDED.is_admin,
+          shift = CASE
+                    WHEN users.shift = 'pending' AND EXCLUDED.is_admin = TRUE THEN 'Morning'
+                    ELSE users.shift
+                  END;
       `;
       await client.query(upsertQuery, [userData.id, userData.first_name, userData.last_name, userData.username, isAdmin, initialShift]);
 
