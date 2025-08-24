@@ -151,6 +151,66 @@ async function handleAdminGetAllUsers() {
     }
 }
 
+async function handleAdminGetCalendar(queryParams) {
+    const pool = new Pool({ connectionString: DATABASE_URL });
+    const client = await pool.connect();
+    try {
+        const { month, year } = queryParams;
+        if (!month || !year) return { statusCode: 400, body: JSON.stringify({ message: 'Month and year are required.' }) };
+        const query = `SELECT TO_CHAR(date, 'YYYY-MM-DD') as date, status, COUNT(id)::int as count FROM days_off WHERE EXTRACT(MONTH FROM date) = $1 AND EXTRACT(YEAR FROM date) = $2 GROUP BY date, status;`;
+        const { rows } = await client.query(query, [month, year]);
+        const calendarState = rows.reduce((acc, row) => {
+            if (!acc[row.date]) { acc[row.date] = { pending: 0, approved: 0 }; }
+            acc[row.date][row.status] = row.count;
+            return acc;
+        }, {});
+        return { statusCode: 200, body: JSON.stringify(calendarState) };
+    } finally {
+        client.release();
+    }
+}
+
+async function handleAdminGetDayDetails(queryParams) {
+    const pool = new Pool({ connectionString: DATABASE_URL });
+    const client = await pool.connect();
+    try {
+        const { date } = queryParams;
+        if (!date) return { statusCode: 400, body: JSON.stringify({ message: 'Date is required.' }) };
+        const query = `SELECT d.id, d.date, d.status, u.id as user_id, u.first_name, u.username, u.shift FROM days_off d JOIN users u ON d.user_id = u.id WHERE d.date = $1 ORDER BY d.created_at ASC;`;
+        const { rows } = await client.query(query, [date]);
+        return { statusCode: 200, body: JSON.stringify(rows) };
+    } finally {
+        client.release();
+    }
+}
+
+async function handleAdminManageRequest(eventBody) {
+    const pool = new Pool({ connectionString: DATABASE_URL });
+    const client = await pool.connect();
+    await client.query('BEGIN');
+    try {
+        const { dayOffId, action } = JSON.parse(eventBody);
+        if (!dayOffId || !['approve', 'reject'].includes(action)) {
+            return { statusCode: 400, body: JSON.stringify({ message: 'Invalid dayOffId or action provided.' }) };
+        }
+        if (action === 'approve') {
+            // TODO: Add validation to prevent approving if it would exceed the 2-person-per-shift limit.
+            const { rows } = await client.query("UPDATE days_off SET status = 'approved' WHERE id = $1 AND status = 'pending' RETURNING id", [dayOffId]);
+            if (rows.length === 0) return { statusCode: 404, body: JSON.stringify({ message: 'Request not found or was not pending.' }) };
+        } else { // reject
+            const { rows } = await client.query("DELETE FROM days_off WHERE id = $1 AND status = 'pending' RETURNING id", [dayOffId]);
+            if (rows.length === 0) return { statusCode: 404, body: JSON.stringify({ message: 'Request not found or was not pending.' }) };
+        }
+        await client.query('COMMIT');
+        return { statusCode: 200, body: JSON.stringify({ message: `Request ${action}d successfully.` }) };
+    } catch(err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+}
+
 // --- MAIN HANDLER ---
 
 exports.handler = async function(event, context) {
@@ -184,6 +244,12 @@ exports.handler = async function(event, context) {
                 return await handleAdminApproveUser(event.body);
             case 'admin-get-all-users':
                 return await handleAdminGetAllUsers();
+            case 'admin-get-calendar':
+                return await handleAdminGetCalendar(event.queryStringParameters);
+            case 'admin-get-day-details':
+                return await handleAdminGetDayDetails(event.queryStringParameters);
+            case 'admin-manage-request':
+                return await handleAdminManageRequest(event.body);
         }
     }
 

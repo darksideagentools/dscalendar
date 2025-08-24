@@ -1,106 +1,120 @@
 import { h } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 
+import { h } from 'preact';
+import { useState, useEffect } from 'preact/hooks';
+
+function AdminCalendar({ onDayClick }) {
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [calendarState, setCalendarState] = useState({});
+
+    useEffect(() => {
+        const fetchAdminCalendar = async () => {
+            const month = currentDate.getMonth() + 1;
+            const year = currentDate.getFullYear();
+            const response = await fetch(`/.netlify/functions/api?action=admin-get-calendar&month=${month}&year=${year}`);
+            const data = await response.json();
+            setCalendarState(data);
+        };
+        fetchAdminCalendar();
+    }, [currentDate]);
+
+    const changeMonth = (offset) => {
+        setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + offset)));
+    };
+
+    const renderCalendar = () => {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const firstDayOfMonth = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const days = [];
+        for (let i = 0; i < firstDayOfMonth; i++) { days.push(<div class="day empty"></div>); }
+
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dateStr = new Date(year, month, i).toISOString().split('T')[0];
+            const dayState = calendarState[dateStr];
+            let dayClass = 'day';
+            if (dayState) {
+                if (dayState.pending > 0) dayClass += ' green'; // Pending requests
+                else if (dayState.approved > 0) dayClass += ' gray'; // Only approved
+            }
+            days.push(<div className={dayClass} onClick={() => onDayClick(dateStr)}>{i}</div>);
+        }
+        return days;
+    };
+
+    return (
+        <div>
+            <div class="calendar-header">
+                <button onClick={() => changeMonth(-1)}>&#9664;</button>
+                <h2>{currentDate.toLocaleString('default', { month: 'long' })} {currentDate.getFullYear()}</h2>
+                <button onClick={() => changeMonth(1)}>&#9654;</button>
+            </div>
+            <div class="calendar-grid">{renderCalendar()}</div>
+        </div>
+    );
+}
+
+function DayDetails({ selectedDate, onUpdateRequest }) {
+    const [details, setDetails] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (!selectedDate) return;
+        const fetchDetails = async () => {
+            setLoading(true);
+            const response = await fetch(`/.netlify/functions/api?action=admin-get-day-details&date=${selectedDate}`);
+            const data = await response.json();
+            setDetails(data);
+            setLoading(false);
+        };
+        fetchDetails();
+    }, [selectedDate]);
+
+    const handleManageRequest = async (dayOffId, action) => {
+        await fetch('/.netlify/functions/api?action=admin-manage-request', {
+            method: 'POST',
+            body: JSON.stringify({ dayOffId, action })
+        });
+        onUpdateRequest(); // Trigger refresh in parent
+    };
+
+    if (!selectedDate) return null;
+    if (loading) return <div>Loading details...</div>;
+
+    return (
+        <div className="day-details">
+            <h4>Requests for {selectedDate}</h4>
+            {details.length === 0 ? <p>No requests for this day.</p> : (
+                <ul>
+                    {details.map(req => (
+                        <li key={req.id}>
+                            <span>{req.first_name} ({req.shift}) - <span class={req.status}>{req.status}</span></span>
+                            {req.status === 'pending' && (
+                                <div class="approval-buttons">
+                                    <button onClick={() => handleManageRequest(req.id, 'approve')}>Approve</button>
+                                    <button onClick={() => handleManageRequest(req.id, 'reject')}>Reject</button>
+                                </div>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
 export function AdminDashboard() {
-  const [pendingUsers, setPendingUsers] = useState([]);
-  const [allUsers, setAllUsers] = useState(null); // New state for all users
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetchPendingUsers = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/.netlify/functions/api?action=admin-get-pending');
-      if (!response.ok) throw new Error('Failed to fetch pending users');
-      const users = await response.json();
-      setPendingUsers(users);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAllUsers = async () => {
-    setError(null);
-    try {
-        const response = await fetch('/.netlify/functions/api?action=admin-get-all-users');
-        if (!response.ok) throw new Error('Failed to fetch all users');
-        const users = await response.json();
-        setAllUsers(users);
-    } catch (err) {
-        setError(err.message);
-    }
-  };
-
-  const handleApprove = async (userId, shift) => {
-    try {
-      setError(null);
-      const response = await fetch('/.netlify/functions/api?action=admin-approve-user', {
-        method: 'POST',
-        body: JSON.stringify({ userId, shift })
-      });
-      if (!response.ok) throw new Error('Approval failed');
-      fetchPendingUsers(); // Refresh list after approval
-      if (allUsers) fetchAllUsers(); // Also refresh the all users list if it's open
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  useEffect(() => {
-    fetchPendingUsers();
-  }, []);
-
-  if (loading) {
-    return <div>Loading pending users...</div>;
-  }
-
-  if (error) {
-    return <div>Error: {error}</div>;
-  }
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0); // Used to force calendar refresh
 
   return (
     <div className="admin-dashboard">
       <h2>Admin Dashboard</h2>
-      <h3>Pending Approvals</h3>
-      {pendingUsers.length === 0 ? (
-        <p>No users are currently awaiting approval.</p>
-      ) : (
-        <ul>
-          {pendingUsers.map(user => (
-            <li key={user.id}>
-              <span>{user.first_name} {user.last_name || ''} (@{user.username || user.id})</span>
-              <div class="approval-buttons">
-                <button onClick={() => handleApprove(user.id, 'Morning')}>Approve Morning</button>
-                <button onClick={() => handleApprove(user.id, 'Evening')}>Approve Evening</button>
-                <button onClick={() => handleApprove(user.id, 'Night')}>Approve Night</button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      <hr />
-      <h3>All Users</h3>
-      <button onClick={fetchAllUsers}>View All Users</button>
-      {allUsers && (
-        <table>
-            <thead>
-                <tr><th>ID</th><th>Name</th><th>Username</th><th>Shift</th><th>Admin?</th></tr>
-            </thead>
-            <tbody>
-                {allUsers.map(user => (
-                    <tr key={user.id}>
-                        <td>{user.id}</td>
-                        <td>{user.first_name}</td>
-                        <td>{user.username}</td>
-                        <td>{user.shift}</td>
-                        <td>{user.is_admin ? 'Yes' : 'No'}</td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-      )}
+      <AdminCalendar key={refreshKey} onDayClick={setSelectedDate} />
+      <DayDetails selectedDate={selectedDate} onUpdateRequest={() => setRefreshKey(k => k + 1)} />
     </div>
   );
+}
 }

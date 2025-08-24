@@ -83,6 +83,54 @@
     cursor: not-allowed;
 }
 
+.day.green {
+    background-color: #198754;
+    color: white;
+}
+
+.day.gray {
+    background-color: #adb5bd;
+    color: white;
+}
+
+.admin-dashboard .calendar-grid .day:hover {
+    background-color: #e9ecef;
+}
+
+.day-details {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.day-details ul {
+    list-style: none;
+    padding: 0;
+}
+
+.day-details li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.day-details li:last-child {
+    border-bottom: none;
+}
+
+.day-details .status.pending {
+    color: #6c757d;
+    font-weight: bold;
+}
+
+.day-details .status.approved {
+    color: #198754;
+    font-weight: bold;
+}
+
 .login-container {
     display: flex;
     flex-direction: column;
