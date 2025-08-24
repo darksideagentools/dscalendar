@@ -14,6 +14,9 @@ importers:
       pg-connection-string:
         specifier: ^2.6.4
         version: 2.9.1
+      pg-pool:
+        specifier: ^3.6.2
+        version: 3.10.1(pg@8.16.3)
       preact:
         specifier: ^10.19.6
         version: 10.27.1
