@@ -196,6 +196,17 @@
     background-color: #f8f9fa;
 }
 
+.delete-button {
+    background-color: #dc3545 !important;
+    color: white !important;
+    border-color: #dc3545 !important;
+}
+
+.delete-button:hover {
+    background-color: #c82333 !important;
+    border-color: #bd2130 !important;
+}
+
 .admin-section {
     margin-bottom: 2rem;
 }

@@ -154,6 +154,19 @@ async function handleAdminGetAllUsers() {
     }
 }
 
+async function handleAdminDeleteUser(eventBody) {
+    const pool = new Pool({ connectionString: DATABASE_URL });
+    const client = await pool.connect();
+    try {
+        const { userId } = JSON.parse(eventBody);
+        if (!userId) return { statusCode: 400, body: JSON.stringify({ message: 'userId is required.' }) };
+        await client.query("DELETE FROM users WHERE id = $1", [userId]);
+        return { statusCode: 200, body: JSON.stringify({ message: `User ${userId} deleted successfully.` }) };
+    } finally {
+        client.release();
+    }
+}
+
 async function handleAdminGetCalendar(queryParams) {
     const pool = new Pool({ connectionString: DATABASE_URL });
     const client = await pool.connect();
@@ -252,6 +265,8 @@ exports.handler = async function(event, context) {
                 return await handleAdminApproveUser(event.body);
             case 'admin-get-all-users':
                 return await handleAdminGetAllUsers();
+            case 'admin-delete-user':
+                return await handleAdminDeleteUser(event.body);
             case 'admin-get-calendar':
                 return await handleAdminGetCalendar(event.queryStringParameters);
             case 'admin-get-day-details':

@@ -155,6 +155,23 @@ export function AdminDashboard() {
     }
   };
 
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Are you sure you want to delete this user? This action is irreversible.')) {
+        return;
+    }
+    try {
+        setError(null);
+        await fetch('/.netlify/functions/api?action=admin-delete-user', {
+            method: 'POST',
+            body: JSON.stringify({ userId })
+        });
+        fetchPendingUsers();
+        fetchAllUsers(); // Always refresh all users after a deletion
+    } catch (err) {
+        setError(err.message);
+    }
+  };
+
   useEffect(() => {
     setLoading(true);
     fetchPendingUsers().finally(() => setLoading(false));
@@ -194,7 +211,7 @@ export function AdminDashboard() {
         {allUsers && (
           <table>
               <thead>
-                  <tr><th>ID</th><th>Name</th><th>Username</th><th>Shift</th><th>Admin?</th></tr>
+                  <tr><th>ID</th><th>Name</th><th>Username</th><th>Shift</th><th>Admin?</th><th>Actions</th></tr>
               </thead>
               <tbody>
                   {allUsers.map(user => (
@@ -204,6 +221,14 @@ export function AdminDashboard() {
                           <td>{user.username}</td>
                           <td>{user.shift}</td>
                           <td>{user.is_admin ? 'Yes' : 'No'}</td>
+                          <td>
+                              {!user.is_admin && (
+                                <button 
+                                    className="delete-button"
+                                    onClick={() => handleDeleteUser(user.id)}
+                                >Delete</button>
+                              )}
+                          </td>
                       </tr>
                   ))}
               </tbody>
