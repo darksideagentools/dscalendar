@@ -14,7 +14,9 @@ export function Calendar() {
       setLoading(true);
       const month = currentDate.getMonth() + 1;
       const year = currentDate.getFullYear();
-      const response = await fetch(`/.netlify/functions/days-off-create-read?month=${month}&year=${year}`);
+      const response = await fetch(`/.netlify/functions/days-off-create-read?month=${month}&year=${year}`, {
+        credentials: 'include' // Ensure cookies are sent
+      });
       if (!response.ok) {
         const errData = await response.json();
         throw new Error(errData.message || 'Failed to fetch calendar data');
@@ -53,6 +55,7 @@ export function Calendar() {
     try {
       const response = await fetch('/.netlify/functions/days-off-create-read', {
         method: 'POST',
+        credentials: 'include', // Ensure cookies are sent
         body: JSON.stringify({ dates: selection })
       });
       const data = await response.json();
