@@ -27,7 +27,7 @@ function AdminMonth({ date, calendarState, onDayClick }) {
     while (days.length < 42) { days.push(<div class="day empty"></div>); }
 
     return (
-        <div className="month-view">
+        <div className="month-view" data-month-key={getMonthKey(date)}>
             <div class="calendar-header">
                 <h2>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</h2>
             </div>
@@ -51,6 +51,7 @@ function AdminCalendar({ onDayClick, refreshKey }) {
     });
     const [calendarData, setCalendarData] = useState({});
     const scrollRef = useRef(null);
+    const isInitialLoad = useRef(true);
 
     const fetchAdminCalendar = async (date) => {
         const monthKey = getMonthKey(date);
@@ -70,27 +71,43 @@ function AdminCalendar({ onDayClick, refreshKey }) {
         const scroller = scrollRef.current;
         if (!scroller) return;
 
+        if (isInitialLoad.current) {
+            scroller.scrollTo({ left: scroller.offsetWidth, behavior: 'instant' });
+            isInitialLoad.current = false;
+        }
+
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
-                        if (entry.target === scroller.firstElementChild) {
+                        if (entry.target.dataset.monthKey === getMonthKey(months[0])) {
                             const firstMonth = months[0];
                             setMonths(prev => [new Date(firstMonth.getFullYear(), firstMonth.getMonth() - 1, 1), ...prev]);
-                        } else if (entry.target === scroller.lastElementChild) {
+                        } else if (entry.target.dataset.monthKey === getMonthKey(months[months.length - 1])) {
                             const lastMonth = months[months.length - 1];
                             setMonths(prev => [...prev, new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 1)]);
                         }
                     }
                 });
             },
-            { root: scroller, threshold: 0.1 }
+            { root: scroller, threshold: 0.6 }
         );
 
-        if (scroller.firstElementChild) observer.observe(scroller.firstElementChild);
-        if (scroller.lastElementChild) observer.observe(scroller.lastElementChild);
+        const handleWheelScroll = (e) => {
+            e.preventDefault();
+            scroller.scrollBy({ left: e.deltaY, behavior: 'auto' });
+        };
 
-        return () => observer.disconnect();
+        scroller.addEventListener('wheel', handleWheelScroll, { passive: false });
+        const firstEl = scroller.firstElementChild;
+        const lastEl = scroller.lastElementChild;
+        if(firstEl) observer.observe(firstEl);
+        if(lastEl) observer.observe(lastEl);
+
+        return () => {
+            observer.disconnect();
+            scroller.removeEventListener('wheel', handleWheelScroll);
+        }
     }, [months]);
 
     return (
