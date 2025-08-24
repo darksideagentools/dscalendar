@@ -18,7 +18,7 @@ export function App() {
   const handleTelegramAuth = async (telegramUser) => {
     setLoading(true);
     try {
-      const response = await fetch('/.netlify/functions/auth-telegram', {
+      const response = await fetch('/.netlify/functions/api?action=auth-telegram', {
         method: 'POST',
         body: JSON.stringify(telegramUser)
       });
@@ -51,7 +51,7 @@ export function App() {
 
     const checkSession = async () => {
       try {
-        const response = await fetch('/.netlify/functions/user-info');
+        const response = await fetch('/.netlify/functions/api?action=user-info');
         if (response.ok) {
           const data = await response.json();
           setUser(data.user);

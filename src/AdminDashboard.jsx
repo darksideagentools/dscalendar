@@ -9,7 +9,7 @@ export function AdminDashboard() {
   const fetchPendingUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/.netlify/functions/admin-get-pending');
+      const response = await fetch('/.netlify/functions/api?action=admin-get-pending');
       if (!response.ok) {
         throw new Error('Failed to fetch pending users');
       }
@@ -24,7 +24,7 @@ export function AdminDashboard() {
 
   const handleApprove = async (userId, shift) => {
     try {
-      const response = await fetch('/.netlify/functions/admin-approve-user', {
+      const response = await fetch('/.netlify/functions/api?action=admin-approve-user', {
         method: 'POST',
         body: JSON.stringify({ userId, shift })
       });
