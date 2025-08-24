@@ -53,8 +53,16 @@ async function handleAuth(eventBody) {
 }
 
 async function handleGetUserInfo(currentUser) {
-  // The user object is already fetched in the main handler, so we just return it.
-  return { statusCode: 200, body: JSON.stringify({ user: currentUser }) };
+  // The user object is already fetched, but we need to map db snake_case to frontend camelCase.
+  const userInfo = {
+    id: currentUser.id,
+    firstName: currentUser.first_name,
+    lastName: currentUser.last_name,
+    username: currentUser.username,
+    shift: currentUser.shift,
+    isAdmin: currentUser.is_admin
+  };
+  return { statusCode: 200, body: JSON.stringify({ user: userInfo }) };
 }
 
 async function handleGetCalendar(currentUser, queryParams) {
