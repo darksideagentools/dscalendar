@@ -95,3 +95,4 @@ exports.handler = async function(event, context) {
       body: JSON.stringify({ message: 'Server error during authentication.', error: err.message })
     };
   }
+};
