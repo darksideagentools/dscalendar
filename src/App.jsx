@@ -58,18 +58,6 @@ function Calendar() {
   );
 }
 
-function LoginButton() {
-  // This component just needs to render the div for the script to find.
-  return (
-    <div
-      data-telegram-login="dscalendar_bot"
-      data-size="large"
-      data-onauth="onTelegramAuth(user)"
-      data-request-access="write"
-    ></div>
-  );
-}
-
 export function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -89,14 +77,13 @@ export function App() {
       }
     } catch (error) {
       console.error(error);
-      // Handle auth error on UI
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    // Check for existing session on load
+    window.addEventListener('telegram-auth', handleTelegramAuth);
     const checkSession = async () => {
       try {
         const response = await fetch('/.netlify/functions/user-info');
@@ -105,33 +92,40 @@ export function App() {
           setUser(data.user);
         }
       } catch (error) {
-        console.error('No active session');
+        // This is expected if there's no session
       } finally {
         setLoading(false);
       }
     };
-
     checkSession();
-
-    // Load the Telegram script once
-    if (!document.getElementById('telegram-widget-script')) {
-        const script = document.createElement('script');
-        script.id = 'telegram-widget-script';
-        script.src = "https://telegram.org/js/telegram-widget.js?22";
-        script.async = true;
-        document.body.appendChild(script);
-    }
-
-    window.addEventListener('telegram-auth', handleTelegramAuth);
     return () => window.removeEventListener('telegram-auth', handleTelegramAuth);
   }, []);
+
+  useEffect(() => {
+    if (user === null && !loading) {
+      if (!document.getElementById('telegram-widget-script')) {
+        const script = document.createElement('script');
+        script.id = 'telegram-widget-script';
+        script.src = 'https://telegram.org/js/telegram-widget.js?22';
+        script.async = true;
+        document.body.appendChild(script);
+      }
+    }
+  }, [user, loading]);
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
   if (!user) {
-    return <LoginButton />;
+    return (
+      <div
+        data-telegram-login="dscalendar_bot"
+        data-size="large"
+        data-onauth="onTelegramAuth(user)"
+        data-request-access="write"
+      ></div>
+    );
   }
 
   if (user.shift === 'pending') {
