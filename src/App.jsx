@@ -18,15 +18,18 @@ export function App() {
   const handleTelegramAuth = async (telegramUser) => {
     setLoading(true);
     try {
+      // First, log out to clear any stale session cookie
+      await fetch('/.netlify/functions/api?action=logout', { method: 'POST' });
+
+      // Then, perform the new login
       const response = await fetch('/.netlify/functions/api?action=auth-telegram', {
         method: 'POST',
         body: JSON.stringify(telegramUser)
       });
       const data = await response.json();
-      alert('Received user data: ' + JSON.stringify(data)); // Temporary diagnostic alert
-      console.log('Received user data:', data); // Temporary diagnostic log
       if (response.ok) {
-        setUser(data); // Use the fresh user data directly from the auth response
+        // We don't call setUser here. We reload the page to force a clean state.
+        window.location.reload();
       } else {
         throw new Error(data.message || 'Auth failed');
       }

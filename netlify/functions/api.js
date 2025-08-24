@@ -14,7 +14,11 @@ function verifyTelegramHash(data) {
 }
 
 // --- ACTION HANDLERS ---
-// Each handler is self-contained and manages its own DB connection.
+
+function handleLogout() {
+    const sessionCookie = cookie.serialize('session', '', { httpOnly: true, secure: true, sameSite: 'Lax', path: '/', maxAge: -1 });
+    return { statusCode: 200, headers: { 'Set-Cookie': sessionCookie }, body: JSON.stringify({ message: 'Logged out' }) };
+}
 
 async function handleAuth(eventBody) {
   const pool = new Pool({ connectionString: DATABASE_URL });
@@ -27,8 +31,6 @@ async function handleAuth(eventBody) {
     const adminIds = (ADMIN_TELEGRAM_ID || '').split(',').map(id => id.trim());
     const isAdmin = adminIds.includes(String(userData.id));
     const initialShift = isAdmin ? 'Morning' : 'pending';
-    console.log(`New user login. UserID: ${userData.id}, IsAdmin: ${isAdmin}, InitialShift: ${initialShift}`);
-
     const upsertQuery = `
       INSERT INTO users (id, first_name, last_name, username, is_admin, shift)
       VALUES ($1, $2, $3, $4, $5, $6)
@@ -39,7 +41,6 @@ async function handleAuth(eventBody) {
     `;
     const { rows } = await client.query(upsertQuery, [userData.id, userData.first_name, userData.last_name, userData.username, isAdmin, initialShift]);
     const user = rows[0];
-
     const token = jwt.sign({ userId: userData.id, shift: user.shift, isAdmin: user.is_admin }, JWT_SECRET, { expiresIn: '7d' });
     const sessionCookie = cookie.serialize('session', token, { httpOnly: true, secure: true, sameSite: 'Lax', path: '/', maxAge: 60 * 60 * 24 * 7 });
     return { statusCode: 200, headers: { 'Set-Cookie': sessionCookie }, body: JSON.stringify({ id: userData.id, firstName: userData.first_name, shift: user.shift, isAdmin: user.is_admin }) };
@@ -219,10 +220,15 @@ exports.handler = async function(event, context) {
   const { action } = event.queryStringParameters;
 
   try {
+    // Public actions
     if (event.httpMethod === 'POST' && action === 'auth-telegram') {
       return await handleAuth(event.body);
     }
+    if (event.httpMethod === 'POST' && action === 'logout') {
+      return handleLogout();
+    }
 
+    // All other actions require authentication
     let userData;
     try {
       const cookies = event.headers.cookie ? cookie.parse(event.headers.cookie) : {};
