@@ -32,11 +32,12 @@ async function handleAuth(eventBody) {
       VALUES ($1, $2, $3, $4, $5, $6)
       ON CONFLICT (id) DO UPDATE SET
         first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, username = EXCLUDED.username, is_admin = EXCLUDED.is_admin,
-        shift = CASE WHEN users.shift = 'pending' AND EXCLUDED.is_admin = TRUE THEN 'Morning' ELSE users.shift END;
+        shift = CASE WHEN users.shift = 'pending' AND EXCLUDED.is_admin = TRUE THEN 'Morning' ELSE users.shift END
+      RETURNING shift, is_admin;
     `;
-    await client.query(upsertQuery, [userData.id, userData.first_name, userData.last_name, userData.username, isAdmin, initialShift]);
-    const { rows } = await client.query('SELECT shift, is_admin FROM users WHERE id = $1', [userData.id]);
+    const { rows } = await client.query(upsertQuery, [userData.id, userData.first_name, userData.last_name, userData.username, isAdmin, initialShift]);
     const user = rows[0];
+
     const token = jwt.sign({ userId: userData.id, shift: user.shift, isAdmin: user.is_admin }, JWT_SECRET, { expiresIn: '7d' });
     const sessionCookie = cookie.serialize('session', token, { httpOnly: true, secure: true, sameSite: 'Lax', path: '/', maxAge: 60 * 60 * 24 * 7 });
     return { statusCode: 200, headers: { 'Set-Cookie': sessionCookie }, body: JSON.stringify({ id: userData.id, firstName: userData.first_name, shift: user.shift, isAdmin: user.is_admin }) };
