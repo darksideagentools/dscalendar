@@ -27,6 +27,8 @@ async function handleAuth(eventBody) {
     const adminIds = (ADMIN_TELEGRAM_ID || '').split(',').map(id => id.trim());
     const isAdmin = adminIds.includes(String(userData.id));
     const initialShift = isAdmin ? 'Morning' : 'pending';
+    console.log(`New user login. UserID: ${userData.id}, IsAdmin: ${isAdmin}, InitialShift: ${initialShift}`);
+
     const upsertQuery = `
       INSERT INTO users (id, first_name, last_name, username, is_admin, shift)
       VALUES ($1, $2, $3, $4, $5, $6)
