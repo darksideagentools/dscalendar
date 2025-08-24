@@ -25,6 +25,7 @@ export function App() {
       const data = await response.json();
       if (response.ok) {
         setUser(data);
+        window.location.reload(); // Force a reload to clear stale state
       } else {
         throw new Error(data.message || 'Auth failed');
       }

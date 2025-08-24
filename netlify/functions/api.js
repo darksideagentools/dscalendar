@@ -139,6 +139,17 @@ async function handleAdminApproveUser(eventBody) {
     }
 }
 
+async function handleAdminGetAllUsers() {
+    const pool = new Pool({ connectionString: DATABASE_URL });
+    const client = await pool.connect();
+    try {
+        const { rows } = await client.query("SELECT id, first_name, username, shift, is_admin FROM users ORDER BY created_at ASC");
+        return { statusCode: 200, body: JSON.stringify(rows) };
+    } finally {
+        client.release();
+    }
+}
+
 // --- MAIN HANDLER ---
 
 exports.handler = async function(event, context) {
@@ -170,6 +181,8 @@ exports.handler = async function(event, context) {
                 return await handleAdminGetPending();
             case 'admin-approve-user':
                 return await handleAdminApproveUser(event.body);
+            case 'admin-get-all-users':
+                return await handleAdminGetAllUsers();
         }
     }
 

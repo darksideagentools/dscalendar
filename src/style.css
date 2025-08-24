@@ -131,3 +131,19 @@
 .approval-buttons button:hover {
     background-color: #e9ecef;
 }
+
+.admin-dashboard table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.admin-dashboard th, .admin-dashboard td {
+    border: 1px solid #dee2e6;
+    padding: 0.5rem;
+    text-align: left;
+}
+
+.admin-dashboard th {
+    background-color: #f8f9fa;
+}
