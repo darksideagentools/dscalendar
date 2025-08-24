@@ -107,6 +107,11 @@ exports.handler = async function(event, context) {
     return { statusCode: 403, body: JSON.stringify({ message: 'Forbidden.' }) };
   }
 
+  // --- TEMPORARY DIAGNOSTIC --- 
+  // Return the user data directly to test if auth passes.
+  return { statusCode: 200, body: JSON.stringify(userData) };
+
+  /* --- ORIGINAL CODE --- 
   const pool = new Pool({ connectionString: DATABASE_URL });
   const client = await pool.connect();
 
@@ -123,5 +128,6 @@ exports.handler = async function(event, context) {
   } finally {
     client.release();
   }
+  */
 };
 
