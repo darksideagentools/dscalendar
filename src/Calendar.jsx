@@ -39,6 +39,11 @@ function Month({ date, calendarData, selection, onDayClick }) {
         days.push(<div className={dayClass} onClick={() => onDayClick(dateStr, isBooked, isRed)}>{i}</div>);
     }
 
+    // Add trailing empty days to fill out 6 weeks (42 cells)
+    while (days.length < 42) {
+        days.push(<div class="day empty"></div>);
+    }
+
     return (
         <div className="month-view">
             <div class="calendar-header">

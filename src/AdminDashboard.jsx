@@ -24,6 +24,11 @@ function AdminMonth({ date, calendarState, onDayClick }) {
         }
         days.push(<div className={dayClass} onClick={() => onDayClick(dateStr)}>{i}</div>);
     }
+
+    // Add trailing empty days to fill out 6 weeks (42 cells)
+    while (days.length < 42) {
+        days.push(<div class="day empty"></div>);
+    }
     return days;
 }
 
