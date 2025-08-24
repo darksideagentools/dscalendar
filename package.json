@@ -10,8 +10,6 @@
   },
   "dependencies": {
     "pg": "^8.11.5",
-    "pg-connection-string": "^2.6.4",
-    "pg-pool": "^3.6.2",
     "preact": "^10.19.6"
   },
   "devDependencies": {
