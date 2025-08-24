@@ -120,10 +120,12 @@ export function App() {
 
   if (!user) {
     return (
-      <iframe 
-        src="/login.html"
-        style={{ border: 'none', width: '240px', height: '50px' }}
-      ></iframe>
+      <div className="login-container">
+        <iframe 
+          src="/login.html"
+          style={{ border: 'none', width: '240px', height: '50px' }}
+        ></iframe>
+      </div>
     );
   }
 

@@ -44,3 +44,11 @@
     color: white;
     cursor: not-allowed;
 }
+
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    padding-top: 2rem;
+}

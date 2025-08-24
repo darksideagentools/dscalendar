@@ -34,18 +34,19 @@ exports.handler = async function(event, context) {
 
     try {
       const isAdmin = String(userData.id) === ADMIN_TELEGRAM_ID;
+      const initialShift = isAdmin ? 'Morning' : 'pending'; // Admins get a default shift
 
       // Upsert user: Insert if new, update if exists
       const upsertQuery = `
-        INSERT INTO users (id, first_name, last_name, username, is_admin, shift) 
-        VALUES ($1, $2, $3, $4, $5, 'pending')
+        INSERT INTO users (id, first_name, last_name, username, is_admin, shift)
+        VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (id) DO UPDATE SET
           first_name = EXCLUDED.first_name,
           last_name = EXCLUDED.last_name,
           username = EXCLUDED.username,
           is_admin = EXCLUDED.is_admin;
       `;
-      await client.query(upsertQuery, [userData.id, userData.first_name, userData.last_name, userData.username, isAdmin]);
+      await client.query(upsertQuery, [userData.id, userData.first_name, userData.last_name, userData.username, isAdmin, initialShift]);
 
       // Get the user's current shift (it might not be pending if they were approved)
       const { rows } = await client.query('SELECT shift, is_admin FROM users WHERE id = $1', [userData.id]);

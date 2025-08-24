@@ -1,0 +1,19 @@
+6:19:28 AM: ❯ Scanning complete. 18 file(s) scanned. Secrets scanning found 1 instance(s) of secrets in build output or repo code.
+6:19:28 AM: ​
+6:19:28 AM: Secret env var "APP_DOMAIN"'s value detected:
+  found value at line 1 in dist/assets/index-DWJLgN__.js
+6:19:28 AM:   found value at line 16 in dist/login.html
+6:19:28 AM:   found value at line 16 in public/login.html
+6:19:28 AM:   found value at line 88 in src/App.jsx
+6:19:28 AM: ​
+6:19:28 AM: To prevent exposing secrets, the build will fail until these secret values are not found in build output or repo files.
+6:19:28 AM: ​
+6:19:28 AM: If these are expected, use SECRETS_SCAN_OMIT_PATHS, SECRETS_SCAN_OMIT_KEYS, or SECRETS_SCAN_ENABLED to prevent detecting.
+6:19:28 AM: ​
+6:19:28 AM: For more information on secrets scanning, see the Netlify Docs: https://ntl.fyi/configure-secrets-scanning
+6:19:28 AM: ​
+6:19:28 AM: Secrets scanning detected secrets in files during build.      
+6:19:28 AM: ────────────────────────────────────────────────────────────────
+6:19:28 AM: ​
+6:19:28 AM:   Error message
+6:19:28 AM:   Secrets scanning found secrets in build.
