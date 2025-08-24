@@ -31,63 +31,50 @@ async function handleAuth(eventBody) {
     const adminIds = (ADMIN_TELEGRAM_ID || '').split(',').map(id => id.trim());
     const isAdmin = adminIds.includes(String(userData.id));
     const initialShift = isAdmin ? 'Morning' : 'pending';
-
-    // First, upsert the user's profile info, but do not touch the shift on conflict.
+    
     const upsertQuery = `
       INSERT INTO users (id, first_name, last_name, username, is_admin, shift)
       VALUES ($1, $2, $3, $4, $5, $6)
       ON CONFLICT (id) DO UPDATE SET
-        first_name = EXCLUDED.first_name,
-        last_name = EXCLUDED.last_name,
-        username = EXCLUDED.username,
-        is_admin = EXCLUDED.is_admin;
+        first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, username = EXCLUDED.username, is_admin = EXCLUDED.is_admin;
     `;
     await client.query(upsertQuery, [userData.id, userData.first_name, userData.last_name, userData.username, isAdmin, initialShift]);
 
-    // AFTER the upsert, perform a clean read to get the definitive current state.
-    const { rows } = await client.query('SELECT shift, is_admin FROM users WHERE id = $1', [userData.id]);
-    const user = rows[0];
-
-    const token = jwt.sign({ userId: userData.id, shift: user.shift, isAdmin: user.is_admin }, JWT_SECRET, { expiresIn: '7d' });
+    // The token ONLY contains the user ID. Nothing else.
+    const token = jwt.sign({ userId: userData.id }, JWT_SECRET, { expiresIn: '7d' });
     const sessionCookie = cookie.serialize('session', token, { httpOnly: true, secure: true, sameSite: 'Lax', path: '/', maxAge: 60 * 60 * 24 * 7 });
-    return { statusCode: 200, headers: { 'Set-Cookie': sessionCookie }, body: JSON.stringify({ id: userData.id, firstName: userData.first_name, shift: user.shift, isAdmin: user.is_admin }) };
+    
+    // The response body still contains the full user data for the initial UI render.
+    const { rows } = await client.query('SELECT id, first_name, shift, is_admin FROM users WHERE id = $1', [userData.id]);
+    return { statusCode: 200, headers: { 'Set-Cookie': sessionCookie }, body: JSON.stringify(rows[0]) };
   } finally {
     client.release();
   }
 }
 
-async function handleGetUserInfo(userData) {
-  const pool = new Pool({ connectionString: DATABASE_URL });
-  const client = await pool.connect();
-  try {
-    const { rows } = await client.query('SELECT id, first_name, last_name, username, shift, is_admin FROM users WHERE id = $1', [userData.userId]);
-    if (rows.length === 0) return { statusCode: 404, body: JSON.stringify({ message: 'User not found' }) };
-    const user = rows[0];
-    const userInfo = { id: user.id, firstName: user.first_name, lastName: user.last_name, username: user.username, shift: user.shift, isAdmin: user.is_admin };
-    return { statusCode: 200, body: JSON.stringify({ user: userInfo }) };
-  } finally {
-    client.release();
-  }
+async function handleGetUserInfo(currentUser) {
+  // The user object is already fetched in the main handler, so we just return it.
+  return { statusCode: 200, body: JSON.stringify({ user: currentUser }) };
 }
 
-async function handleGetCalendar(userData, queryParams) {
+async function handleGetCalendar(currentUser, queryParams) {
     const pool = new Pool({ connectionString: DATABASE_URL });
     const client = await pool.connect();
     try {
         const { month, year } = queryParams;
         if (!month || !year) return { statusCode: 400, body: JSON.stringify({ message: 'Month and year are required.' }) };
         const shiftDaysOffQuery = `SELECT TO_CHAR(date, 'YYYY-MM-DD') as date, COUNT(id) FROM days_off WHERE status = 'approved' AND user_id IN (SELECT id FROM users WHERE shift = $1) AND EXTRACT(MONTH FROM date) = $2 AND EXTRACT(YEAR FROM date) = $3 GROUP BY date;`;
-        const shiftDaysOffResult = await client.query(shiftDaysOffQuery, [userData.shift, month, year]);
+        const shiftDaysOffResult = await client.query(shiftDaysOffQuery, [currentUser.shift, month, year]);
         const shiftDayCounts = shiftDaysOffResult.rows.reduce((acc, row) => { acc[row.date] = parseInt(row.count, 10); return acc; }, {});
         const myDaysOffQuery = `SELECT TO_CHAR(date, 'YYYY-MM-DD') as date, status FROM days_off WHERE user_id = $1;`;
-        const myDaysOffResult = await client.query(myDaysOffQuery, [userData.userId]);
+        const myDaysOffResult = await client.query(myDaysOffQuery, [currentUser.id]);
         return { statusCode: 200, body: JSON.stringify({ shiftDayCounts, myDaysOff: myDaysOffResult.rows }) };
     } finally {
         client.release();
     }
 }
 
-async function handleRequestDaysOff(userData, eventBody) {
+async function handleRequestDaysOff(currentUser, eventBody) {
     const pool = new Pool({ connectionString: DATABASE_URL });
     const client = await pool.connect();
     await client.query('BEGIN');
@@ -95,7 +82,7 @@ async function handleRequestDaysOff(userData, eventBody) {
         const { dates } = JSON.parse(eventBody);
         if (!Array.isArray(dates) || dates.length === 0) return { statusCode: 400, body: JSON.stringify({ message: 'An array of dates is required.' }) };
         const myDaysOffQuery = "SELECT COUNT(id) FROM days_off WHERE user_id = $1 AND (status = 'pending' OR status = 'approved')";
-        const myDaysOffResult = await client.query(myDaysOffQuery, [userData.userId]);
+        const myDaysOffResult = await client.query(myDaysOffQuery, [currentUser.id]);
         const currentDaysOffCount = parseInt(myDaysOffResult.rows[0].count, 10);
         if (currentDaysOffCount + dates.length > 4) {
             await client.query('ROLLBACK');
@@ -103,13 +90,13 @@ async function handleRequestDaysOff(userData, eventBody) {
         }
         for (const date of dates) {
             const shiftDayCountQuery = `SELECT COUNT(id) FROM days_off WHERE date = $1 AND status = 'approved' AND user_id IN (SELECT id FROM users WHERE shift = $2);`;
-            const shiftDayCountResult = await client.query(shiftDayCountQuery, [date, userData.shift]);
+            const shiftDayCountResult = await client.query(shiftDayCountQuery, [date, currentUser.shift]);
             const shiftDayCount = parseInt(shiftDayCountResult.rows[0].count, 10);
             if (shiftDayCount >= 2) {
                 await client.query('ROLLBACK');
                 return { statusCode: 400, body: JSON.stringify({ message: `Cannot request ${date} as it is already fully booked for your shift.` }) };
             }
-            await client.query("INSERT INTO days_off (user_id, date, status) VALUES ($1, $2, 'pending')", [userData.userId, date]);
+            await client.query("INSERT INTO days_off (user_id, date, status) VALUES ($1, $2, 'pending')", [currentUser.id, date]);
         }
         await client.query('COMMIT');
         return { statusCode: 201, body: JSON.stringify({ message: 'Day off requests submitted successfully.' }) };
@@ -120,6 +107,8 @@ async function handleRequestDaysOff(userData, eventBody) {
         client.release();
     }
 }
+
+// ... [All admin handlers remain the same, as they already fetch fresh data] ...
 
 async function handleAdminGetPending() {
     const pool = new Pool({ connectionString: DATABASE_URL });
@@ -217,7 +206,6 @@ async function handleAdminManageRequest(eventBody) {
             return { statusCode: 400, body: JSON.stringify({ message: 'Invalid dayOffId or action provided.' }) };
         }
         if (action === 'approve') {
-            // TODO: Add validation to prevent approving if it would exceed the 2-person-per-shift limit.
             const { rows } = await client.query("UPDATE days_off SET status = 'approved' WHERE id = $1 AND status = 'pending' RETURNING id", [dayOffId]);
             if (rows.length === 0) return { statusCode: 404, body: JSON.stringify({ message: 'Request not found or was not pending.' }) };
         } else { // reject
@@ -238,6 +226,8 @@ async function handleAdminManageRequest(eventBody) {
 
 exports.handler = async function(event, context) {
   const { action } = event.queryStringParameters;
+  const pool = new Pool({ connectionString: DATABASE_URL });
+  const client = await pool.connect();
 
   try {
     // Public actions
@@ -249,22 +239,29 @@ exports.handler = async function(event, context) {
     }
 
     // All other actions require authentication
-    let userData;
+    let decodedToken;
     try {
       const cookies = event.headers.cookie ? cookie.parse(event.headers.cookie) : {};
       const sessionToken = cookies.session;
       if (!sessionToken) throw new Error('No session token');
-      userData = jwt.verify(sessionToken, JWT_SECRET);
+      decodedToken = jwt.verify(sessionToken, JWT_SECRET);
     } catch (err) {
       return { statusCode: 401, body: JSON.stringify({ message: 'Unauthorized' }) };
     }
 
+    // On every authenticated request, get the LATEST user data from the DB
+    const { rows } = await client.query('SELECT * FROM users WHERE id = $1', [decodedToken.userId]);
+    const currentUser = rows[0];
+    if (!currentUser) {
+        return { statusCode: 401, body: JSON.stringify({ message: 'User not found in DB.' }) };
+    }
+
     if (event.httpMethod === 'GET' && action === 'user-info') {
-      return await handleGetUserInfo(userData);
+      return await handleGetUserInfo(currentUser);
     }
 
     // Admin-only actions
-    if (userData.isAdmin) {
+    if (currentUser.is_admin) {
         switch (action) {
             case 'admin-get-pending':
                 return await handleAdminGetPending();
@@ -283,21 +280,23 @@ exports.handler = async function(event, context) {
         }
     }
 
-    if (userData.shift === 'pending') {
+    if (currentUser.shift === 'pending') {
       return { statusCode: 403, body: JSON.stringify({ message: 'Forbidden: User is pending approval.' }) };
     }
 
     // Regular user actions
     switch (action) {
       case 'get-calendar':
-        return await handleGetCalendar(userData, event.queryStringParameters);
+        return await handleGetCalendar(currentUser, event.queryStringParameters);
       case 'request-days-off':
-        return await handleRequestDaysOff(userData, event.body);
+        return await handleRequestDaysOff(currentUser, event.body);
       default:
         return { statusCode: 404, body: JSON.stringify({ message: 'Action not found' }) };
     }
   } catch (err) {
     console.error('[API_ERROR]', err);
     return { statusCode: 500, body: JSON.stringify({ message: 'Server Error' }) };
+  } finally {
+    client.release();
   }
 };

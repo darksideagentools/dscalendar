@@ -18,36 +18,21 @@ export function App() {
   const handleTelegramAuth = async (telegramUser) => {
     setLoading(true);
     try {
-      // We don't need to logout first if we are forcing a re-check after.
       const response = await fetch('/.netlify/functions/api?action=auth-telegram', {
         method: 'POST',
         body: JSON.stringify(telegramUser)
       });
       if (response.ok) {
-        // Instead of setting user or reloading, we re-run the session check
-        // to get the definitive user state from the new cookie.
-        await checkSession(); 
+        // The backend has set the new cookie. Reloading the page is the most
+        // robust way to ensure the app starts fresh with the new session.
+        window.location.reload();
       } else {
         const data = await response.json();
         throw new Error(data.message || 'Auth failed');
       }
     } catch (error) {
       console.error(error);
-    } finally {
       setLoading(false);
-    }
-  };
-
-  const checkSession = async () => {
-    try {
-      const response = await fetch('/.netlify/functions/api?action=user-info');
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-      }
-    } catch (error) {
-      // This is expected if there's no session
-      setUser(null);
     }
   };
 
@@ -60,8 +45,20 @@ export function App() {
     };
     window.addEventListener('message', handleIframeMessage);
 
-    setLoading(true);
-    checkSession().finally(() => setLoading(false));
+    const checkSession = async () => {
+      try {
+        const response = await fetch('/.netlify/functions/api?action=user-info');
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+        }
+      } catch (error) {
+        setUser(null);
+      }
+      setLoading(false);
+    };
+
+    checkSession();
 
     return () => window.removeEventListener('message', handleIframeMessage);
   }, []);
