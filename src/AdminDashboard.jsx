@@ -1,130 +1,81 @@
 import { h } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 
-// Helper to get a date string like '2025-08'
-const getMonthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-
-// Renders a single month grid for the Admin view
-function AdminMonth({ date, calendarState, onDayClick }) {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDayOfMonth = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const days = [];
-
-    for (let i = 0; i < firstDayOfMonth; i++) { days.push(<div class="day empty"></div>); }
-
-    for (let i = 1; i <= daysInMonth; i++) {
-        const dateStr = new Date(year, month, i).toISOString().split('T')[0];
-        const dayState = calendarState[dateStr];
-        let dayClass = 'day';
-        if (dayState) {
-            if (dayState.pending > 0) dayClass += ' green';
-            else if (dayState.approved > 0) dayClass += ' gray';
-        }
-        days.push(<div className={dayClass} onClick={() => onDayClick(dateStr)}>{i}</div>);
-    }
-    while (days.length < 42) { days.push(<div class="day empty"></div>); }
-
-    return (
-        <div className="month-view" data-month-key={getMonthKey(date)}>
-            <div class="calendar-header">
-                <h2>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</h2>
-            </div>
-            <div class="calendar-grid">
-                <div class="day-label">S</div><div class="day-label">M</div><div class="day-label">T</div><div class="day-label">W</div><div class="day-label">T</div><div class="day-label">F</div><div class="day-label">S</div>
-                {days}
-            </div>
-        </div>
-    );
-}
-
-// Component for the Admin's Calendar View using infinite scroll
 function AdminCalendar({ onDayClick, refreshKey }) {
-    const [months, setMonths] = useState(() => {
-        const today = new Date();
-        return [
-            new Date(today.getFullYear(), today.getMonth() - 1, 1),
-            today,
-            new Date(today.getFullYear(), today.getMonth() + 1, 1),
-        ];
-    });
-    const [calendarData, setCalendarData] = useState({});
-    const scrollRef = useRef(null);
-    const isInitialLoad = useRef(true);
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [calendarState, setCalendarState] = useState({});
+    const calendarRef = useRef(null);
+    const isScrolling = useRef(false);
 
-    const fetchAdminCalendar = async (date) => {
-        const monthKey = getMonthKey(date);
-        if (calendarData[monthKey] && refreshKey === 0) return;
-        const month = date.getMonth() + 1;
-        const year = date.getFullYear();
-        const response = await fetch(`/.netlify/functions/api?action=admin-get-calendar&month=${month}&year=${year}`);
-        const data = await response.json();
-        setCalendarData(prev => ({ ...prev, [monthKey]: data }));
+    useEffect(() => {
+        const fetchAdminCalendar = async () => {
+            const month = currentDate.getMonth() + 1;
+            const year = currentDate.getFullYear();
+            const response = await fetch(`/.netlify/functions/api?action=admin-get-calendar&month=${month}&year=${year}`);
+            const data = await response.json();
+            setCalendarState(data);
+        };
+        fetchAdminCalendar();
+    }, [currentDate, refreshKey]);
+
+    const changeMonth = (offset) => {
+        setCurrentDate(prevDate => new Date(prevDate.getFullYear(), prevDate.getMonth() + offset, 1));
     };
 
     useEffect(() => {
-        months.forEach(fetchAdminCalendar);
-    }, [months, refreshKey]);
+        const calendarEl = calendarRef.current;
+        if (!calendarEl) return;
 
-    useEffect(() => {
-        const scroller = scrollRef.current;
-        if (!scroller) return;
-
-        if (isInitialLoad.current) {
-            scroller.scrollTo({ left: scroller.offsetWidth, behavior: 'instant' });
-            isInitialLoad.current = false;
-        }
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        if (entry.target.dataset.monthKey === getMonthKey(months[0])) {
-                            const firstMonth = months[0];
-                            setMonths(prev => [new Date(firstMonth.getFullYear(), firstMonth.getMonth() - 1, 1), ...prev]);
-                        } else if (entry.target.dataset.monthKey === getMonthKey(months[months.length - 1])) {
-                            const lastMonth = months[months.length - 1];
-                            setMonths(prev => [...prev, new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 1)]);
-                        }
-                    }
-                });
-            },
-            { root: scroller, threshold: 0.6 }
-        );
-
-        const handleWheelScroll = (e) => {
+        const handleWheel = (e) => {
             e.preventDefault();
-            scroller.scrollBy({ left: e.deltaY, behavior: 'auto' });
+            if (isScrolling.current) return;
+            isScrolling.current = true;
+            if (e.deltaY < 0) {
+                changeMonth(-1);
+            } else {
+                changeMonth(1);
+            }
+            setTimeout(() => { isScrolling.current = false; }, 500);
         };
 
-        scroller.addEventListener('wheel', handleWheelScroll, { passive: false });
-        const firstEl = scroller.firstElementChild;
-        const lastEl = scroller.lastElementChild;
-        if(firstEl) observer.observe(firstEl);
-        if(lastEl) observer.observe(lastEl);
+        calendarEl.addEventListener('wheel', handleWheel, { passive: false });
+        return () => calendarEl.removeEventListener('wheel', handleWheel);
+    }, []);
 
-        return () => {
-            observer.disconnect();
-            scroller.removeEventListener('wheel', handleWheelScroll);
+    const renderCalendarGrid = () => {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const firstDayOfMonth = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const days = [];
+        for (let i = 0; i < firstDayOfMonth; i++) { days.push(<div class="day empty"></div>); }
+
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dateStr = new Date(year, month, i).toISOString().split('T')[0];
+            const dayState = calendarState[dateStr];
+            let dayClass = 'day';
+            if (dayState) {
+                if (dayState.pending > 0) dayClass += ' green';
+                else if (dayState.approved > 0) dayClass += ' gray';
+            }
+            days.push(<div className={dayClass} onClick={() => onDayClick(dateStr)}>{i}</div>);
         }
-    }, [months]);
+        while (days.length < 42) { days.push(<div class="day empty"></div>); }
+        return days;
+    };
 
     return (
-        <div ref={scrollRef} className="calendar-scroll-container">
-            {months.map(date => (
-                <AdminMonth 
-                    key={getMonthKey(date)} 
-                    date={date} 
-                    calendarState={calendarData[getMonthKey(date)] || {}} 
-                    onDayClick={onDayClick} 
-                />
-            ))}
+        <div ref={calendarRef}>
+            <div class="calendar-header">
+                <button onClick={() => changeMonth(-1)}>&#9664;</button>
+                <h2>{currentDate.toLocaleString('default', { month: 'long' })} {currentDate.getFullYear()}</h2>
+                <button onClick={() => changeMonth(1)}>&#9654;</button>
+            </div>
+            <div className="calendar-grid">{renderCalendarGrid()}</div>
         </div>
     );
 }
 
-// ... (DayDetails and other components remain the same)
 function DayDetails({ selectedDate, onUpdateRequest }) {
     const [details, setDetails] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -177,7 +128,6 @@ function DayDetails({ selectedDate, onUpdateRequest }) {
     );
 }
 
-// Main Admin Dashboard Component
 export function AdminDashboard() {
   const [pendingUsers, setPendingUsers] = useState([]);
   const [allUsers, setAllUsers] = useState(null);
@@ -187,8 +137,8 @@ export function AdminDashboard() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const handleRequestUpdate = () => {
-    setSelectedDate(null); // Clear details view
-    setRefreshKey(k => k + 1); // Force calendar to refetch
+    setSelectedDate(null);
+    setRefreshKey(k => k + 1);
   };
 
   const fetchPendingUsers = async () => {
@@ -239,7 +189,7 @@ export function AdminDashboard() {
             body: JSON.stringify({ userId })
         });
         fetchPendingUsers();
-        fetchAllUsers(); // Always refresh all users after a deletion
+        fetchAllUsers();
     } catch (err) {
         setError(err.message);
     }
